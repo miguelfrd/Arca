@@ -7,11 +7,22 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Ferrum · Prototipo</title>
+<style>
+/* Manrope = titulares · Barlow = resto (autohospedadas, subset latin) */
+@font-face{font-family:'Manrope';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/manrope-600-latin.woff2') format('woff2')}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/manrope-700-latin.woff2') format('woff2')}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:800;font-display:swap;src:url('fonts/manrope-800-latin.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/barlow-400-latin.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/barlow-500-latin.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/barlow-600-latin.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/barlow-700-latin.woff2') format('woff2')}
+</style>
 </head>
 <body>
 <style>
 html,body{height:100%}
-body{margin:0;background:#000;overscroll-behavior:none;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+body{margin:0;background:#000;overscroll-behavior:none;font-family:'Barlow',-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+.h-title h1,.h-sec h2,.w-title,.w-exname,.h-rout-top b,.fp-brand{font-family:'Manrope',-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif}
 body *{-webkit-tap-highlight-color:transparent}
 button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
 :root{--blue:#2f7df6;--green:#30d158;--red:#ff453a;--yellow:#ffd60a;--card:#1c1c1e;--card2:#2c2c2e;--sub:#8e8e93;--line:rgba(255,255,255,.08)}
