@@ -1,4 +1,4 @@
-import{d as y,s as w,e as v,t as M,g as T,l as U,c as K,b as G,I as ee,a as te,p as O}from"./index-bl_XI6X_.js";import{d as se,w as N,a as B,f as I,b as $}from"./stats-Cz7THz2Z.js";import{c as ae}from"./photo-B4nAdfpw.js";import{D as V,u as F,S as ne}from"./types-CEDv8i23.js";const ie=[25,20,15,10,5,2.5,1.25];function oe(t,e=20,r=ie){const l=Math.max(0,(t-e)/2),c=[...r].sort((n,s)=>s-n),u=[];let o=l;for(const n of c){if(n<=0)continue;const s=Math.floor(o/n+1e-9);s>0&&(u.push({kg:n,count:s}),o=Math.round((o-s*n)*1e3)/1e3)}const i=u.reduce((n,s)=>n+s.kg*s.count,0),a=Math.round((e+i*2)*100)/100;return{perSideKg:Math.round(l*100)/100,platesPerSide:u,barKg:e,achievedKg:a,exact:Math.abs(a-t)<.001}}let D=new Map,x;async function q(){const t=await y.all("exercises");D=new Map(t.map(e=>[e.id,e])),x=await G()}function z(t){return D.get(t)?.nameEs??t.replace(/^desconocido:/,"")}async function ce(t){await q();const e=U(),r=await y.all("routines"),l=await y.all("folders"),c=new Map(l.map(s=>[s.id,s.name])),u=await y.workoutsDesc(8),o=new Date().getDay(),i=r.filter(s=>s.dayOfWeek===o);let a='<div class="screen-head"><h1>Entrenamiento</h1></div>';if(e&&(a+=`<div class="card" style="border-color:var(--blue)">
+import{d as y,s as w,e as v,t as M,g as T,l as U,c as K,b as G,I as ee,a as te,p as O}from"./index-CvB3rwgP.js";import{d as se,w as N,a as B,f as I,b as $}from"./stats-Cz7THz2Z.js";import{c as ae}from"./photo-B4nAdfpw.js";import{D as V,u as F,S as ne}from"./types-CEDv8i23.js";const ie=[25,20,15,10,5,2.5,1.25];function oe(t,e=20,r=ie){const l=Math.max(0,(t-e)/2),c=[...r].sort((n,s)=>s-n),u=[];let o=l;for(const n of c){if(n<=0)continue;const s=Math.floor(o/n+1e-9);s>0&&(u.push({kg:n,count:s}),o=Math.round((o-s*n)*1e3)/1e3)}const i=u.reduce((n,s)=>n+s.kg*s.count,0),a=Math.round((e+i*2)*100)/100;return{perSideKg:Math.round(l*100)/100,platesPerSide:u,barKg:e,achievedKg:a,exact:Math.abs(a-t)<.001}}let D=new Map,x;async function q(){const t=await y.all("exercises");D=new Map(t.map(e=>[e.id,e])),x=await G()}function z(t){return D.get(t)?.nameEs??t.replace(/^desconocido:/,"")}async function ce(t){await q();const e=U(),r=await y.all("routines"),l=await y.all("folders"),c=new Map(l.map(s=>[s.id,s.name])),u=await y.workoutsDesc(8),o=new Date().getDay(),i=r.filter(s=>s.dayOfWeek===o);let a='<div class="screen-head"><h1>Entrenamiento</h1></div>';if(e&&(a+=`<div class="card" style="border-color:var(--blue)">
       <h3>Sesión en curso</h3>
       <div class="muted small">${v(e.title)} · ${e.exercises.length} ejercicios</div>
       <div class="row" style="margin-top:10px">
@@ -60,10 +60,10 @@ import{d as y,s as w,e as v,t as M,g as T,l as U,c as K,b as G,I as ee,a as te,p
           <button class="icon-btn ghost" data-menu="${a}" title="Opciones" aria-label="Opciones del ejercicio">⋮</button>
         </div>
         <div class="ex-actions">
-          <button class="action-btn${b?" on":""}" data-select="${a}">${b?"✓ ":""}Seleccionar</button>
-          <button class="icon-btn" data-plate="${a}" title="Calculadora de discos" aria-label="Calculadora de discos">◎</button>
-          <button class="action-btn" data-note="${a}">✎ Editar</button>
-          <button class="action-btn" data-del-ex="${a}">✕ Eliminar</button>
+          <button class="action-seg${b?" on":""}" data-select="${a}">${b?"✓ ":"🔗 "}Seleccionar</button>
+          <button class="action-seg action-icon" data-plate="${a}" title="Calculadora de discos" aria-label="Calculadora de discos">◎</button>
+          <button class="action-seg" data-note="${a}">✎ Editar</button>
+          <button class="action-seg" data-del-ex="${a}">✕ Eliminar</button>
         </div>
         ${i.notes?`<div class="small muted ex-note">✎ ${v(i.notes)}</div>`:""}
         <table class="set-table roomy">
@@ -72,7 +72,8 @@ import{d as y,s as w,e as v,t as M,g as T,l as U,c as K,b as G,I as ee,a as te,p
           ${i.sets.map((p,m)=>`
             <tr class="${p.done?"set-done":""}">
               <td class="set-serie">
-                <button class="set-badge ${p.setType}${p.done?" done":""}" data-stype="${a}:${m}" title="Tipo de serie">${p.setType==="normal"?p.setIndex+1:v(ne[p.setType])}</button>
+                <button class="set-num" data-stype="${a}:${m}" title="Tipo de serie">${p.setIndex+1}</button>
+                <span class="set-type-pill ${p.setType}">${v(ne[p.setType])}</span>
                 <div class="set-prev">Anterior: ${v(r.get(i.exerciseId)??"—")}</div>
               </td>
               ${s.map(h=>`<td><input type="text" inputmode="decimal" data-inp="${a}:${m}:${h.key}" value="${p[h.key]??""}" placeholder="–" ${p.done?"disabled":""}/></td>`).join("")}
@@ -81,8 +82,8 @@ import{d as y,s as w,e as v,t as M,g as T,l as U,c as K,b as G,I as ee,a as te,p
             </tr>`).join("")}
           </tbody>
         </table>
-        <button class="rest-row" data-rest="${a}"><span>Descanso: ${i.restSeconds} s</span><span class="chev" aria-hidden="true">›</span></button>
-        <button class="btn add-set" data-add-set="${a}">＋ Añadir serie</button>
+        <button class="rest-row" data-rest="${a}"><span>🕐 Descanso: ${i.restSeconds} s</span><span class="chev" aria-hidden="true">›</span></button>
+        <button class="btn add-set" data-add-set="${a}">+ Añadir serie</button>
       </div>`}),o+=`
     <div class="w-foot">
       <button class="btn secondary w-foot-btn" id="w-add-ex">＋ Añadir ejercicio</button>
