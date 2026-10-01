@@ -2,7 +2,7 @@
 // Estrategia: cache-first para todo lo del mismo origen; la app se cachea
 // en la primera visita y luego funciona sin conexión.
 
-const CACHE = 'ferrum-v4';
+const CACHE = 'ferrum-v5';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
