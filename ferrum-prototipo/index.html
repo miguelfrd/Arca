@@ -27,7 +27,8 @@ body *{-webkit-tap-highlight-color:transparent}
 button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
 :root{--blue:#2f7df6;--green:#30d158;--red:#ff453a;--yellow:#ffd60a;--card:#1c1c1e;--card2:#2c2c2e;--sub:#8e8e93;--line:rgba(255,255,255,.08)}
 .fp-screen{position:relative;width:100%;max-width:430px;margin:0 auto;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:#000;color:#f5f5f7}
-.fp-screen[data-app-theme="light"]{background:#f2f2f7;color:#111}
+.fp-screen[data-app-theme="dark"]{background:hsl(var(--bgh,262),30%,6%)}
+.fp-screen[data-app-theme="light"]{background:hsl(var(--bgh,262),32%,88%);color:#111}
 @media (min-width:500px){.fp-screen{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
 .fp-app{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;scrollbar-width:none;padding-top:env(safe-area-inset-top)}
 .fp-app::-webkit-scrollbar{display:none}
@@ -36,7 +37,7 @@ button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .fp-num{font-variant-numeric:tabular-nums}
 /* floating pill tabbar */
 .fp-tabbar{flex:0 0 auto;display:flex;margin:0 16px calc(10px + env(safe-area-inset-bottom));background:rgba(28,28,30,.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:6px;z-index:20;box-shadow:0 8px 30px rgba(0,0,0,.55)}
-.fp-screen[data-app-theme="light"] .fp-tabbar{background:rgba(255,255,255,.94);border-color:rgba(0,0,0,.07)}
+.fp-screen[data-app-theme="light"] .fp-tabbar{background:rgba(255,255,255,.88);border-color:rgba(0,0,0,.07)}
 .fp-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:#8e8e93;font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;padding:9px 0;border-radius:999px}
 .fp-tab svg{width:22px;height:22px}
 .fp-tab.on{background:rgba(255,255,255,.1);color:var(--blue)}
@@ -52,7 +53,7 @@ button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .fp-empty{text-align:center;color:var(--sub);font-size:14px;padding:34px 20px;line-height:1.6}
 /* entrenamiento */
 .h-bigbtn{display:flex;align-items:center;gap:12px;width:100%;background:var(--card);border:0;border-radius:16px;color:#fff;font-size:16.5px;font-weight:600;padding:19px 18px;cursor:pointer;margin-bottom:22px;font-family:inherit;text-align:left}
-.fp-screen[data-app-theme="light"] .h-bigbtn{background:#fff;color:#111;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.fp-screen[data-app-theme="light"] .h-bigbtn{background:#fff;color:#111;box-shadow:0 2px 8px rgba(0,0,0,.10)}
 .h-bigbtn .plus{font-size:24px;font-weight:300;line-height:1}
 .h-sec{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px}
 .h-sec h2{font-size:21px;font-weight:700;margin:0;letter-spacing:-.3px}
@@ -61,11 +62,11 @@ button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .h-half{display:flex;gap:10px;margin-bottom:16px}
 .h-half button{flex:1;display:flex;align-items:center;gap:10px;background:var(--card);border:0;border-radius:14px;color:#fff;font-size:15.5px;font-weight:600;padding:17px 16px;cursor:pointer;font-family:inherit;min-width:0}
 .h-half button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fp-screen[data-app-theme="light"] .h-half button{background:#fff;color:#111;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.fp-screen[data-app-theme="light"] .h-half button{background:#fff;color:#111;box-shadow:0 2px 8px rgba(0,0,0,.10)}
 .h-half svg{width:22px;height:22px;flex:0 0 22px}
 .h-fold{display:flex;align-items:center;gap:7px;color:var(--sub);font-size:16px;font-weight:600;background:none;border:0;padding:4px 0 12px;cursor:pointer;font-family:inherit}
 .h-rout{background:var(--card);border-radius:18px;padding:18px 16px 16px;margin-bottom:12px}
-.fp-screen[data-app-theme="light"] .h-rout{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.fp-screen[data-app-theme="light"] .h-rout{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.10)}
 .h-rout-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px}
 .h-rout-top b{font-size:19px;font-weight:700;letter-spacing:-.2px}
 .h-rout-top button{background:none;border:0;color:#fff;font-size:15px;letter-spacing:2px;cursor:pointer;padding:4px 2px;font-weight:700}
@@ -75,7 +76,7 @@ button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .h-start:active{transform:scale(.985)}
 /* inicio */
 .i-hist{background:var(--card);border-radius:14px;padding:4px 16px;margin-bottom:10px}
-.fp-screen[data-app-theme="light"] .i-hist{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.fp-screen[data-app-theme="light"] .i-hist{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.10)}
 .i-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--line)}
 .i-row:last-child{border-bottom:none}
 .i-row .t b{font-size:15.5px;display:block;margin-bottom:3px}
@@ -132,7 +133,7 @@ input.w-cell:focus{outline:none;border-color:var(--blue)}
 .p-sub{font-size:13px;color:var(--sub);margin-top:3px}
 .fp-kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:6px}
 .fp-kpi{background:var(--card);border-radius:14px;padding:13px 12px}
-.fp-screen[data-app-theme="light"] .fp-kpi{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.fp-screen[data-app-theme="light"] .fp-kpi{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.10)}
 .fp-kpi .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
 .fp-kpi .l{font-size:10.5px;color:var(--sub);margin-top:4px;letter-spacing:.6px;text-transform:uppercase}
 .fp-bars{display:flex;align-items:flex-end;gap:9px;height:150px;padding:14px 4px 4px}
@@ -142,7 +143,7 @@ input.w-cell:focus{outline:none;border-color:var(--blue)}
 .fp-bar b{font-size:10px;color:var(--sub);font-weight:600}
 /* shared rows/cards */
 .fp-card{background:var(--card);border-radius:14px;padding:14px 15px}
-.fp-screen[data-app-theme="light"] .fp-card{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.fp-screen[data-app-theme="light"] .fp-card{background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.10)}
 .fp-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
 .fp-row:last-child{border-bottom:none}
 .fp-row .t{font-size:15px;font-weight:600}
@@ -180,6 +181,17 @@ input.w-cell:focus{outline:none;border-color:var(--blue)}
 /* toast */
 .fp-toast{position:absolute;left:50%;bottom:110px;transform:translateX(-50%) translateY(20px);background:#1c2534;color:#f5f5f7;font-size:13.5px;font-weight:600;padding:11px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.12);opacity:0;pointer-events:none;transition:all .25s;z-index:40;white-space:nowrap}
 .fp-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* PIN en tema claro */
+.fp-screen[data-app-theme="light"] .fp-brand{color:#141414}
+.fp-screen[data-app-theme="light"] .fp-dots span{border-color:#b3adc4}
+.fp-screen[data-app-theme="light"] .fp-key{background:#fff;border-color:rgba(0,0,0,.08);color:#141414;box-shadow:0 2px 8px rgba(0,0,0,.10)}
+.fp-screen[data-app-theme="light"] .fp-key:active{background:#efe9df}
+/* slider de tono de fondo */
+.fp-hue{width:100%;-webkit-appearance:none;appearance:none;height:12px;border-radius:999px;background:linear-gradient(90deg,hsl(0,70%,60%),hsl(60,70%,60%),hsl(120,70%,60%),hsl(180,70%,60%),hsl(240,70%,60%),hsl(300,70%,60%),hsl(360,70%,60%));outline:none;margin:12px 0 6px;cursor:pointer;padding:0}
+.fp-hue::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.18);box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer}
+.fp-hue::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.18);box-shadow:0 2px 6px rgba(0,0,0,.3);cursor:pointer}
+.fp-swatch{width:30px;height:30px;border-radius:50%;border:1px solid rgba(0,0,0,.15);flex:0 0 30px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55)}
+.fp-hueval{font-variant-numeric:tabular-nums}
 </style>
 <div class="fp-screen" id="fp-screen" data-app-theme="dark">
   <div class="fp-app" id="fp-app"></div>
@@ -190,7 +202,7 @@ input.w-cell:focus{outline:none;border-color:var(--blue)}
 "use strict";
 var W = window.hatchWidget || null;
 var DEFAULTS = {
-  authed:false, pin:"", screen:"train", theme:"dark",
+  authed:false, pin:"", screen:"train", theme:"light", hue:262,
   workout:null, restLeft:0, restRunning:false,
   history:[
     {id:"h1",name:"Pecho · Día 3",date:"Ayer · 28 min",vol:"4.820 kg",sets:12,detail:"Press banca plano 4×10×80 · Inclinado manc. 4×10×32 · Fondos 4×12"},
@@ -250,6 +262,9 @@ function fmtPrev(s){ return (s.kg||"–")+" × "+(s.reps||"–"); }
 
 function render(){
   screenEl.setAttribute("data-app-theme", S.theme);
+  var hue=(S.hue==null?262:S.hue);
+  document.documentElement.style.setProperty("--bgh",hue);
+  document.body.style.background=S.theme==="light"?"hsl("+hue+",32%,88%)":"hsl("+hue+",30%,6%)";
   if(!S.authed){ tabbar.style.display="none"; app.innerHTML=pinHTML(); return; }
   var hideTabs = (S.screen==="workout");
   tabbar.style.display = hideTabs ? "none" : "flex";
@@ -390,6 +405,7 @@ function exerciseHTML(){
     +'<div style="height:14px"></div><button class="h-start" data-action="ex-add-workout" data-id="'+x.id+'">Añadir al entreno</button>';
 }
 function profileHTML(){
+  var hue=(S.hue==null?262:S.hue);
   var vols=[4820,7150,6030,5210,6890,4480,5920,6640], max=Math.max.apply(null,vols);
   var days=["L","M","X","J","V","S","D","L"];
   var bars=vols.map(function(v,i){
@@ -405,7 +421,11 @@ function profileHTML(){
     +'<div class="fp-sec">Volumen semanal · kg</div><div class="fp-card"><div class="fp-bars">'+bars+'</div></div>'
     +'<div class="fp-sec">Peso corporal</div><div class="fp-card" style="padding:4px 15px">'+list+'</div>'
     +'<div class="fp-meas-input"><input id="fp-meas-in" placeholder="82,4" inputmode="decimal"><button class="fp-send" data-action="meas-add">Añadir</button></div>'
-    +'<div class="fp-sec">App</div><div class="fp-card" style="padding:4px 15px">'
+    +'<div class="fp-sec">Personalización</div><div class="fp-card" style="padding:14px 15px 10px">'
+  +'<div class="fp-row" style="padding:0"><div style="flex:1"><div class="t" style="font-size:15px">Color de fondo</div><div class="s">Arrastra para cambiar el tono</div></div><span class="fp-swatch" id="fp-swatch" style="background:hsl('+hue+',32%,88%)"></span></div>'
+  +'<input type="range" class="fp-hue" min="0" max="360" step="1" value="'+hue+'" oninput="setHue(this.value)" aria-label="Tono del fondo">'
+  +'<div class="s fp-hueval" style="text-align:right;padding-bottom:2px"><span id="fp-hue-v">'+hue+'°</span></div></div>'
+  +'<div class="fp-sec">App</div><div class="fp-card" style="padding:4px 15px">'
     +'<div class="fp-row"><div class="t" style="font-size:15px;flex:1">Ejercicios</div><button class="fp-go" data-action="go" data-to="exercises">›</button></div>'
     +'<div class="fp-row"><div class="t" style="font-size:15px;flex:1">Órdenes por voz</div><button class="fp-go" data-action="go" data-to="orders">›</button></div>'
     +'<div class="fp-row"><div style="flex:1"><div class="t" style="font-size:15px">Tema</div><div class="s">'+(S.theme==="dark"?"Oscuro":"Claro")+'</div></div><button class="fp-go" data-action="theme">›</button></div>'
@@ -416,6 +436,14 @@ function profileHTML(){
 }
 </script>
 <script>
+/* ---- tono del fondo (personalización) ---- */
+function setHue(v){
+  S.hue=Math.max(0,Math.min(360,parseInt(v,10)||0)); save();
+  document.documentElement.style.setProperty("--bgh",S.hue);
+  document.body.style.background=S.theme==="light"?"hsl("+S.hue+",32%,88%)":"hsl("+S.hue+",30%,6%)";
+  var sw=document.getElementById("fp-swatch"); if(sw) sw.style.background="hsl("+S.hue+",32%,88%)";
+  var hv=document.getElementById("fp-hue-v"); if(hv) hv.textContent=S.hue+"°";
+}
 /* ---- actions ---- */
 var timerInt=null;
 var uiInt=null;
