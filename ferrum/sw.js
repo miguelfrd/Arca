@@ -2,11 +2,14 @@
 // Estrategia: cache-first para todo lo del mismo origen; la app se cachea
 // en la primera visita y luego funciona sin conexión.
 
-const CACHE = 'ferrum-v8';
+const CACHE = 'ferrum-v9';
 
 self.addEventListener('install', (event) => {
+  // 'reload' evita que la precarga coja una copia rancia del borde del CDN
+  // a mitad de un deploy (fue la causa de la pantalla negra v6->v7).
+  const fresh = (u) => new Request(new URL(u, self.registration.scope).href, { cache: 'reload' });
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html', './manifest.webmanifest'])).then(() => self.skipWaiting()),
+    caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html', './manifest.webmanifest'].map(fresh))).then(() => self.skipWaiting()),
   );
 });
 
