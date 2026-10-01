@@ -1,0 +1,9 @@
+/* Ferrum — Manrope (titulares) + Barlow (resto). Autohospedadas, subset latin.
+   Este fichero se copia tal cual a dist/; las rutas son relativas a la raíz. */
+@font-face{font-family:'Manrope';font-style:normal;font-weight:600;font-display:swap;src:url('./fonts/manrope-600-latin.woff2') format('woff2')}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:700;font-display:swap;src:url('./fonts/manrope-700-latin.woff2') format('woff2')}
+@font-face{font-family:'Manrope';font-style:normal;font-weight:800;font-display:swap;src:url('./fonts/manrope-800-latin.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:400;font-display:swap;src:url('./fonts/barlow-400-latin.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:500;font-display:swap;src:url('./fonts/barlow-500-latin.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:600;font-display:swap;src:url('./fonts/barlow-600-latin.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:700;font-display:swap;src:url('./fonts/barlow-700-latin.woff2') format('woff2')}
