@@ -1,13 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d1312">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Ferrum · Prototipo</title>
+</head>
+<body>
 <style>
-.fp-wrap{box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 4px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
-.fp-note{margin:0;font-size:12px;color:var(--hatch-widget-muted);text-align:center;max-width:420px;line-height:1.5}
-.fp-phone{width:min(400px,100%);height:min(800px,84vh);min-height:620px;background:#050807;border-radius:54px;padding:11px;box-shadow:0 24px 70px rgba(0,0,0,.45),inset 0 0 0 2px #2a3230;box-sizing:border-box}
-.fp-screen{position:relative;height:100%;border-radius:44px;overflow:hidden;display:flex;flex-direction:column;background:#0d1312;color:#eef4f2}
+html,body{height:100%}
+body{margin:0;background:#070b0a;overscroll-behavior:none;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+body *{-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.fp-screen{position:relative;width:100%;max-width:430px;margin:0 auto;height:100dvh;overflow:hidden;display:flex;flex-direction:column;background:#0d1312;color:#eef4f2}
 .fp-screen[data-app-theme="light"]{background:#f2f5f4;color:#0f1514}
-.fp-island{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:112px;height:30px;background:#000;border-radius:20px;z-index:30}
-.fp-status{flex:0 0 52px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 30px 6px;font-size:14px;font-weight:600;z-index:20;pointer-events:none}
-.fp-status svg{display:block}
-.fp-app{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;scrollbar-width:none}
+@media (min-width:500px){.fp-screen{border-left:1px solid rgba(255,255,255,.07);border-right:1px solid rgba(255,255,255,.07)}}
+.fp-note{margin:18px 0 0;font-size:12.5px;color:#8fa19c;text-align:center;line-height:1.5}
+.fp-screen[data-app-theme="light"] .fp-note{color:#5f6f6a}
+.fp-app{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;scrollbar-width:none;padding-top:env(safe-area-inset-top)}
 .fp-app::-webkit-scrollbar{display:none}
 .fp-page{padding:6px 18px 26px;animation:fpIn .22s ease}
 @keyframes fpIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -31,7 +43,7 @@
 .fp-chip.on{background:rgba(45,212,191,.15);border-color:#2dd4bf;color:#2dd4bf}
 .fp-screen[data-app-theme="light"] .fp-chip{border-color:rgba(0,0,0,.14);color:#33403d}
 .fp-screen[data-app-theme="light"] .fp-chip.on{background:rgba(15,118,110,.1);border-color:#0f766e;color:#0f766e}
-.fp-tabbar{flex:0 0 86px;display:flex;border-top:1px solid rgba(255,255,255,.08);background:rgba(13,19,18,.96);padding:8px 2px 20px;z-index:20}
+.fp-tabbar{flex:0 0 auto;display:flex;border-top:1px solid rgba(255,255,255,.08);background:rgba(13,19,18,.96);padding:10px 2px calc(10px + env(safe-area-inset-bottom));z-index:20}
 .fp-screen[data-app-theme="light"] .fp-tabbar{background:rgba(242,245,244,.96);border-color:rgba(0,0,0,.08)}
 .fp-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:none;color:#7d8b88;font-size:9.5px;font-weight:600;cursor:pointer;font-family:inherit;padding:2px 0}
 .fp-tab svg{width:23px;height:23px}
@@ -108,15 +120,10 @@
 .fp-go{background:none;border:none;color:#5b6865;font-size:18px;cursor:pointer;padding:4px 0 4px 10px}
 .fp-empty{text-align:center;color:#8fa19c;font-size:14px;padding:34px 20px;line-height:1.6}
 </style>
-<div class="fp-wrap">
-  <div class="fp-phone"><div class="fp-screen" id="fp-screen" data-app-theme="dark">
-    <div class="fp-island"></div>
-    <div class="fp-status"><span>9:41</span><span style="display:flex;gap:6px;align-items:center"><svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1" opacity=".4"/></svg><svg width="25" height="11" viewBox="0 0 25 11" fill="none"><rect x="0.5" y="0.5" width="20" height="10" rx="3" stroke="currentColor" opacity=".5"/><rect x="2.5" y="2.5" width="14" height="6" rx="1.5" fill="currentColor"/><rect x="22" y="3.5" width="2.5" height="4" rx="1" fill="currentColor" opacity=".5"/></svg></span></div>
-    <div class="fp-app" id="fp-app"></div>
-    <nav class="fp-tabbar" id="fp-tabbar" style="display:none"></nav>
-    <div class="fp-toast" id="fp-toast"></div>
-  </div></div>
-  <p class="fp-note">Prototipo interactivo de diseño — PIN demo: 4 dígitos cualquiera. Pídeme cambios y lo ajusto.</p>
+<div class="fp-screen" id="fp-screen" data-app-theme="dark">
+  <div class="fp-app" id="fp-app"></div>
+  <nav class="fp-tabbar" id="fp-tabbar" style="display:none"></nav>
+  <div class="fp-toast" id="fp-toast"></div>
 </div>
 <script>
 "use strict";
@@ -424,3 +431,5 @@ document.addEventListener("keydown",function(ev){
 });
 render();
 </script>
+</body>
+</html>
