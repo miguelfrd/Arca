@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-ferrum-ui="atelier">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f766e" />
+    <meta name="theme-color" content="#f6f4ef" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -13,6 +13,8 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" type="image/png" href="./icons/icon-192.png" />
     <link rel="apple-touch-icon" href="./icons/icon-180.png" />
+    <!-- Capa visual Ferrum Atelier: el script solo enriquece la presentación. -->
+    <script defer src="./ui/ferrum-ui-v1.js"></script>
     <script>
       /* Diagnóstico de arranque (temporal): si la app queda en negro, este cuadro
          rojo muestra el motivo en vez de dejar la pantalla muda. Solo aparece si
@@ -52,10 +54,13 @@
         }, 8000);
       })();
     </script>
-    <script type="module" crossorigin src="./assets/index-Aotr33zZ.js"></script>
+    <script type="module" crossorigin src="./assets/index-BV15pZrL.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-epcpGQgh.css">
   </head>
   <body>
     <div id="app"><main id="view"></main></div>
+    <!-- Hoja de la capa visual Atelier: al final para que vaya DESPUÉS de la
+         hoja compilada por vite (la inyecta al final del head en el build). -->
+    <link rel="stylesheet" href="./ui/ferrum-ui-v1.css" />
   </body>
 </html>
