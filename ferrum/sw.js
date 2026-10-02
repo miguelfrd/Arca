@@ -2,7 +2,7 @@
 // Estrategia: cache-first para todo lo del mismo origen; la app se cachea
 // en la primera visita y luego funciona sin conexión.
 
-const CACHE = 'ferrum-v30';
+const CACHE = 'ferrum-v31';
 
 self.addEventListener('install', (event) => {
   // 'reload' evita que la precarga coja una copia rancia del borde del CDN
@@ -24,6 +24,15 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // nunca cacheamos terceros
+  // El propio sw.js siempre de red: si saliera de caché, la app nunca
+  // detectaría que hay una versión nueva desplegada.
+  if (url.pathname.endsWith('/sw.js')) return;
+  // La página pregunta qué versión del SW la está sirviendo (para el aviso
+  // de actualización dentro de la app).
+  if (url.pathname.endsWith('/sw-version')) {
+    event.respondWith(new Response(CACHE, { headers: { 'content-type': 'text/plain' } }));
+    return;
+  }
   // La comprobación de biblioteca (data/exercises.json) necesita red fresca:
   // si el SW la sirviera de caché, nunca se detectarían versiones nuevas.
   if (url.pathname.endsWith('/data/exercises.json')) return;
@@ -36,7 +45,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE).then((cache) => cache.put(req, copy));
         }
         return res;
-      }).catch(() => caches.match('./index.html'));
+      }).catch(() => req.mode === 'navigate' ? caches.match('./index.html') : Promise.reject(new Error('offline')));
     }),
   );
 });
