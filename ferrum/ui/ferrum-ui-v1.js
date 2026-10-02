@@ -29,7 +29,7 @@
   let queued = false;
   let currentRoute = "";
   let previousTab = 0;
-  const tabOrder = { train: 0, routines: 1, yo: 2, stats: 2, exercises: 2, measures: 2, more: 2 };
+  const tabOrder = { train: 0, routines: 1, yo: 2, stats: 2, exercises: 2, measures: 2, more: 2, friends: 3 };
   function route() {
     const path = (location.hash || "#/train").slice(1).split("?")[0];
     return path === "/train/active" ? "active" : (path.split("/")[1] || "train");
@@ -68,12 +68,6 @@
         subtitle.textContent = descriptions[section];
         head.append(subtitle);
       }
-    }
-    const free = section === "train" && view.querySelector('[data-act="free"]');
-    if (free && !free.closest(".fui-session-hero")) {
-      const hero = create("fui-session-hero", `<div class="fui-hero-art" aria-hidden="true">${art}</div><div class="fui-hero-eyebrow">UN MOMENTO PARA TI</div><div class="fui-hero-title">Un paso más<br>fuerte.</div><p class="fui-hero-copy">Empieza una sesión libre.<br>El resto lo marcas tú.</p>`);
-      free.before(hero);
-      hero.append(free); // Existing button and its listeners are retained.
     }
     for (const empty of view.querySelectorAll(".empty:not(.small)")) {
       if (!empty.querySelector(".fui-empty-icon")) {
@@ -116,16 +110,6 @@
         }
         if (link.classList.contains("active")) link.setAttribute("aria-current", "page");
         else link.removeAttribute("aria-current");
-      }
-    }
-    if (!motion.matches) {
-      const cards = view.querySelectorAll(".card, .yo-btn, .fui-session-hero, .fui-empty");
-      for (let index = 0; index < Math.min(cards.length, 8); index++) {
-        const card = cards[index];
-        if (card.dataset.fuiSeen) continue;
-        card.dataset.fuiSeen = "1";
-        card.style.setProperty("--fui-delay", `${Math.min(index * 28, 112)}ms`);
-        card.classList.add("fui-reveal");
       }
     }
   }
