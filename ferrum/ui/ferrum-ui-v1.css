@@ -264,7 +264,10 @@ html[data-ferrum-ui="atelier"] .am-rowhead h2 { font-size: 20px; letter-spacing:
 html[data-ferrum-ui="atelier"] .am-sub { font-size: 13px; }
 html[data-ferrum-ui="atelier"] .am-bodymap svg { height: 285px; }
 html[data-ferrum-ui="atelier"] .flt { border-radius: 15px; background: var(--input-bg); }
-html[data-ferrum-ui="atelier"] .flt-select { background: transparent; border: 0; padding: 6px 0; min-height: 40px; }
+/* El select dentro de .flt NO lleva caja propia: la caja ya la pone .flt.
+   (Sin este refuerzo, la regla genérica de inputs de atelier —más específica—
+   le pintaba un borde y creaba "un cuadrado dentro de otro".) */
+html[data-ferrum-ui="atelier"] .flt .flt-select { background: transparent; border: 0; padding: 6px 0; min-height: 40px; }
 html[data-ferrum-ui="atelier"] .seg,
 html[data-ferrum-ui="atelier"] .segctl { padding: 4px; border-radius: 14px; }
 html[data-ferrum-ui="atelier"] .seg button,
