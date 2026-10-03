@@ -61,7 +61,7 @@ export async function enhanceHome(view) {
     const workout = await db.get('workouts', button.dataset.removeWorkout);
     if (!workout || !await confirmDlg(`¿Eliminar el entrenamiento «${workout.title}»? No se puede deshacer.`)) return;
     await db.del('workouts', workout.id); await db.del('workoutPhotos', workout.id);
-    const { renderTrainHome } = await import('../assets/train-CQPcLgo5.js');
+    const { renderTrainHome } = await import('../train');
     clearOwnPhotos(); await renderTrainHome(view); await enhanceHome(view);
   });
   await renderFeed();

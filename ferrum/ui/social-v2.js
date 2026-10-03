@@ -1,6 +1,6 @@
 import { socialStore as store } from './social-store-v2.js';
 
-let configPromise, identity, cachedState, onboarding, localDb, helpers, syncing, started = false, debounce, retryTimer;
+let configPromise, identity, cachedState, onboarding, localDb, helpers, syncing, initializing, debounce, retryTimer;
 let connection = { configured: false, online: navigator.onLine !== false, syncing: false, error: '', lastSync: 0 };
 const listeners = new Set();
 const photoUrls = new Map();
@@ -14,8 +14,13 @@ function normalizeBase(value) {
   if (url.username || url.password || url.search || url.hash) throw Error();
   return url.href.replace(/\/$/, '');
 }
+function configurationSignal() {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), 2500);
+  return controller.signal;
+}
 export async function configuration() {
-  return configPromise ||= fetch(new URL('../social-config.json', import.meta.url), { cache: 'no-store' })
+  return configPromise ||= fetch(new URL('./social-config.json', document.baseURI), { cache: 'no-store', signal: configurationSignal() })
     .then(response => { if (!response.ok) throw Error(); return response.json(); })
     .then(async value => {
       let base; try { base = normalizeBase(value.apiBase); } catch { base = ''; }
@@ -74,11 +79,21 @@ async function useState(state) {
   for (const [key, value] of photoUrls) if (!permitted.has(key)) { URL.revokeObjectURL(value.url); photoUrls.delete(key); }
   announce();
 }
-export async function initialize(db, domain) {
-  if (started) return;
-  started = true; localDb = db; helpers = domain;
-  identity = await store.get('identity'); cachedState = await store.get('state'); onboarding = await store.get('onboarding');
-  connection.configured = Boolean(await configuration()); connection.lastSync = await store.get('lastSync') || 0;
+export function initialize(db, domain) {
+  if (initializing) return initializing;
+  initializing = initializeLocal(db, domain).catch(error => {
+    initializing = null;
+    throw error;
+  });
+  return initializing;
+}
+async function initializeLocal(db, domain) {
+  localDb = db; helpers = domain;
+  [identity, cachedState, onboarding, connection.lastSync] = await Promise.all([
+    store.get('identity'), store.get('state'), store.get('onboarding'), store.get('lastSync')
+  ]);
+  connection.lastSync ||= 0;
+  connection.configured = Boolean(await configuration());
   installDataHooks(db);
   window.addEventListener('online', async () => {
     configPromise = null; connection.configured = Boolean(await configuration()); announce(); synchronize();
