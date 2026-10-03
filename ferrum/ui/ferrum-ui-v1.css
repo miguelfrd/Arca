@@ -397,3 +397,18 @@ html[data-ferrum-ui="atelier"] .check-btn.check-pop { animation: fui-check 260ms
   html[data-ferrum-ui="atelier"]::view-transition-old(root),
   html[data-ferrum-ui="atelier"]::view-transition-new(root) { animation: none !important; }
 }
+
+/* FIX 2026-10-03 (pantalla Ejercicios): el anillo de foco flotante (outline-offset:3px)
+   se pintaba ENCIMA de los botones de filtro de la fila inferior (las filas van
+   pegadas, sin margen vertical). Se dibuja hacia ADENTRO (offset -2px) para que no
+   invada otras filas. Los selects de filtro bajan a 15px para que "Todos los
+   músculos" quepa sin recortarse. */
+html[data-ferrum-ui="atelier"] :is(input[type="text"], input[type="number"], input[type="date"], input[type="password"], select, textarea):focus-visible {
+  outline-offset: -2px;
+}
+html[data-ferrum-ui="atelier"] #ex-muscle,
+html[data-ferrum-ui="atelier"] #ex-equip {
+  font-size: 14.5px;
+  padding-left: 10px;
+  padding-right: 8px;
+}
