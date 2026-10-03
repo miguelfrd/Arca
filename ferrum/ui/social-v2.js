@@ -1,11 +1,11 @@
 import { socialStore as store } from './social-store-v2.js';
 
-let configPromise, identity, cachedState, localDb, helpers, syncing, started = false, debounce, retryTimer;
+let configPromise, identity, cachedState, onboarding, localDb, helpers, syncing, started = false, debounce, retryTimer;
 let connection = { configured: false, online: navigator.onLine !== false, syncing: false, error: '', lastSync: 0 };
 const listeners = new Set();
 const photoUrls = new Map();
 const announce = () => { for (const listener of listeners) listener(snapshot()); };
-export const snapshot = () => ({ ...connection, identity, state: cachedState });
+export const snapshot = () => ({ ...connection, identity, state: cachedState, onboarding });
 export function subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); }
 function normalizeBase(value) {
   if (!value) return '';
@@ -53,7 +53,7 @@ export async function api(path, options = {}) {
   const abort = () => controller.abort();
   options.signal?.addEventListener('abort', abort, { once: true });
   if (options.signal?.aborted) controller.abort();
-  const timeout = setTimeout(abort, 20000);
+  const timeout = setTimeout(abort, options.timeout || 20000);
   try {
     const response = await fetch(base + '/v1' + path, { method: options.method || 'GET', headers, body: payload,
       signal: controller.signal, credentials: 'omit', cache: 'no-store' });
@@ -77,7 +77,7 @@ async function useState(state) {
 export async function initialize(db, domain) {
   if (started) return;
   started = true; localDb = db; helpers = domain;
-  identity = await store.get('identity'); cachedState = await store.get('state');
+  identity = await store.get('identity'); cachedState = await store.get('state'); onboarding = await store.get('onboarding');
   connection.configured = Boolean(await configuration()); connection.lastSync = await store.get('lastSync') || 0;
   installDataHooks(db);
   window.addEventListener('online', async () => {
@@ -86,7 +86,7 @@ export async function initialize(db, domain) {
   window.addEventListener('offline', () => { connection.online = false; announce(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) synchronize(); });
   window.addEventListener('pageshow', () => synchronize());
-  setInterval(() => { if (!document.hidden) synchronize(); }, 15 * 60000);
+  setInterval(() => { if (!document.hidden) synchronize(); }, 30000);
   announce();
   if (identity?.registered) synchronize();
 }
@@ -189,21 +189,73 @@ export function synchronize() {
     } catch (error) {
       connection.error = error.message; connection.online = error.status !== 0;
       if (error.status === 429) { clearTimeout(retryTimer); retryTimer = setTimeout(() => synchronize(), 65000); }
-      if (error.status === 401) {
-        identity.registered = false; await store.set('identity', identity); cachedState = null; await store.remove('state');
-        for (const value of photoUrls.values()) URL.revokeObjectURL(value.url); photoUrls.clear();
-      }
+      // A rejected session must not turn an existing account into a new registration.
+      // Keep local data and credentials until a supported recovery flow is available.
+      if (error.status === 401) connection.error = 'No se ha podido validar tu cuenta. Tus datos siguen en este móvil. No vuelvas a registrarte: revisa el acceso al servidor.';
     } finally { connection.syncing = false; announce(); }
   })().finally(() => { syncing = null; });
   return syncing;
 }
 export async function join(values) {
+  if (!/^[a-f0-9]{64}$/.test(values.invite || '')) throw new SocialError('Necesitas un enlace de invitación válido para crear tu cuenta.', 400, 'invitation_required');
   const owner = await ownIdentity();
+  if (owner.registered) throw new SocialError('Ya tienes una cuenta en este móvil.', 409, 'already_registered');
+  try {
+    if (sessionStorage.getItem('ferrum-verified-invite') === values.invite) { owner.entryMode = 'invited'; owner.enrollmentInvite = values.invite; }
+  } catch {}
+  await store.set('identity', owner);
   const data = await api('/join', { method: 'POST', anonymous: true,
-    body: { ...values, deviceId: owner.deviceId, deviceSecret: owner.deviceSecret } });
+    body: { ...values, sharing: false, deviceId: owner.deviceId, deviceSecret: owner.deviceSecret } });
+  // Persist the next step before announcing registration, so rendering cannot skip it.
+  onboarding = { step: 'people', selected: [], removeAutomaticRequests: true };
+  await store.set('onboarding', onboarding);
   identity.registered = true; await store.set('identity', identity); await useState(data);
-  if (data.profile.sharing) for (const workout of await localDb.all('workouts')) if (workout.endTime) await enqueue(workout.id);
-  synchronize(); return data;
+  return data;
+}
+export async function bootstrapOwner(code, nickname) {
+  const owner = await ownIdentity();
+  if (owner.registered) throw new SocialError('Este móvil ya tiene una cuenta.', 409);
+  const data = await api('/join', { method: 'POST', anonymous: true,
+    body: { code, nickname, sharing: false, deviceId: owner.deviceId, deviceSecret: owner.deviceSecret } });
+  onboarding = { step: 'people', selected: [], removeAutomaticRequests: true };
+  await store.setAll({ identity: { ...owner, registered: true }, state: data, onboarding });
+  identity.registered = true; await useState(data); return data;
+}
+export async function saveSelection(ids) {
+  onboarding = { ...onboarding, selected: [...new Set(ids)] };
+  await store.set('onboarding', onboarding);
+}
+export async function prepareSelection() {
+  if (!onboarding?.removeAutomaticRequests) return;
+  // The old Worker may automatically request the inviter. Nobody is selected by default.
+  await synchronize();
+  for (const link of cachedState.relationships.filter(link => link.state === 'pending' && !link.incoming))
+    await action('/requests/' + encodeURIComponent(link.id) + '/cancel', {});
+  onboarding = { ...onboarding, removeAutomaticRequests: false };
+  await store.set('onboarding', onboarding); announce();
+}
+export async function completeOnboarding() {
+  await prepareSelection();
+  for (const id of onboarding?.selected || []) {
+    const link = cachedState.relationships.find(link => link.person.id === id);
+    if (link?.state === 'accepted' || (link?.state === 'pending' && !link.incoming)) continue;
+    // Existing incoming requests still require the user's explicit acceptance later.
+    if (link?.state === 'pending' && link.incoming) continue;
+    await action('/requests', { personId: id });
+  }
+  await action('/profile', { nickname: cachedState.profile.nickname, sharing: true });
+  try { localStorage.removeItem('ferrum-onboarding-selection:' + cachedState.profile.id); } catch {}
+  await store.remove('onboarding'); onboarding = null; announce();
+}
+export async function recoverIdentity(values, cloudKey) {
+  if (identity?.registered) throw new SocialError('Este móvil ya tiene una cuenta.', 409, 'already_registered');
+  const owner = makeIdentity();
+  const data = await api('/account/recover', { method: 'POST', anonymous: true,
+    body: { ...values, deviceId: owner.deviceId, deviceSecret: owner.deviceSecret } });
+  const next = { ...owner, registered: true, entryMode: 'invited' };
+  await store.setAll({ identity: next, state: data, 'cloud-key': cloudKey, 'cloud-restore-pending': true });
+  identity = next; onboarding = null; await store.remove('onboarding');
+  await useState(data); return data;
 }
 export async function action(path, body) {
   const result = await api(path, { method: path === '/profile' ? 'PATCH' : 'POST', body });

@@ -3,6 +3,8 @@ import { initialize, subscribe, snapshot } from './social-v2.js';
 import { enhanceHome, clearOwnPhotos } from './home-v2.js';
 import { stopFriendView } from './friends-v2.js';
 import { installInteractionMotion } from './motion-v2.js';
+import { renderDataStatus, stopDataStatus } from './data-status-v2.js';
+import { initializeCloud } from './cloud-v2.js';
 
 let installed = false;
 export function enhanceWorkout(view) {
@@ -30,6 +32,7 @@ export async function afterRoute(view, path) {
   if (!installed) {
     installed = true; installInteractionMotion();
     await initialize(db, { workoutVolume, workoutSets });
+    await initializeCloud(db);
     subscribe(updateFriendsBadge);
     new MutationObserver(() => {
       if (location.hash.startsWith('#/train/active')) enhanceWorkout(view);
@@ -39,8 +42,18 @@ export async function afterRoute(view, path) {
       .observe(view, { childList: true });
   }
   clearOwnPhotos();
+  if (path !== '/yo') stopDataStatus();
+  const info = snapshot();
+  let pendingInvite = false;
+  try { pendingInvite = Boolean(sessionStorage.getItem('ferrum-verified-invite')) && !info.identity?.registered; } catch {}
+  document.documentElement.classList.toggle('fui-enrolling', Boolean(info.onboarding) || pendingInvite);
+  if ((info.onboarding || pendingInvite) && path !== '/friends') {
+    location.hash = pendingInvite ? '#/friends?invite=' + sessionStorage.getItem('ferrum-verified-invite') : '#/friends';
+    return;
+  }
   if (path !== '/friends') stopFriendView();
   if (path === '/train') await enhanceHome(view);
   if (path === '/train/active') enhanceWorkout(view);
+  if (path === '/yo') await renderDataStatus(view);
   updateFriendsBadge();
 }

@@ -24,9 +24,26 @@ async function transact(name, mode, operation) {
   });
 }
 export const socialStore = {
+  async setAll(values) {
+    const connection = await database();
+    return new Promise((resolve, reject) => {
+      const tx = connection.transaction('meta', 'readwrite'), object = tx.objectStore('meta');
+      for (const [key,value] of Object.entries(values)) object.put({ key, value });
+      tx.oncomplete = resolve; tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+  },
   async get(key) { return (await transact('meta', 'readonly', store => store.get(key)))?.value; },
   set: (key, value) => transact('meta', 'readwrite', store => store.put({ key, value })),
   remove: key => transact('meta', 'readwrite', store => store.delete(key)),
+  async removeMatchingRevision(key, revision) {
+    const connection = await database();
+    return new Promise((resolve, reject) => {
+      const tx = connection.transaction('meta', 'readwrite'), object = tx.objectStore('meta');
+      const request = object.get(key);
+      request.onsuccess = () => { if (request.result?.value?.revision === revision) object.delete(key); };
+      tx.oncomplete = resolve; tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+  },
   putJob: value => transact('outbox', 'readwrite', store => store.put(value)),
   jobs: () => transact('outbox', 'readonly', store => store.getAll()),
   async deferJob(localId, revision, error) {
