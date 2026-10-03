@@ -1,5 +1,6 @@
 import { db, toast } from './platform-v2.js';
 import { socialStore } from './social-store-v2.js';
+import { renderAccountSecurity } from './account-security-v2.js';
 import { cloudSnapshot, subscribeCloud, synchronizeCloud, recoveryCode, markRecoverySaved, reconnectKey, resolveCloudConflict, restorePreviousLocal, cloudHistory, restoreCloudVersion } from './cloud-v2.js';
 
 let cleanup;
@@ -15,6 +16,7 @@ export async function renderDataStatus(view) {
   card.setAttribute('aria-labelledby', 'fui-data-heading');
   card.innerHTML = `<span class="fui-step">TUS DATOS</span><h2 id="fui-data-heading">Tu copia privada</h2><div class="fui-data-counts"><span><strong>${workouts.length}</strong> sesiones</span><span><strong>${routines.length}</strong> rutinas</span><span><strong>${photos.length}</strong> fotos de sesiones</span></div><div class="fui-backup-pending" role="status"><strong data-cloud-title></strong><span data-cloud-detail></span></div><div class="fui-cloud-actions"><button class="btn secondary" data-cloud-sync>Comprobar copia</button><button class="btn secondary" data-cloud-history hidden>Historial de copias</button><button class="btn secondary" data-cloud-code hidden>Guardar código de recuperación</button><button class="btn secondary" data-cloud-key hidden>Conectar con mi código</button></div><div data-cloud-conflict hidden><p>Hay versiones distintas. La copia del servidor y tus cambios de este móvil se conservan. Elige cuál quieres continuar usando.</p><button class="btn secondary" data-keep-local>Guardar este móvil</button><button class="btn secondary" data-use-cloud>Usar copia de la nube</button></div>${previous ? '<button class="btn secondary" data-restore-local>Recuperar copia local anterior</button>' : ''}<p>La copia privada incluye rutinas, pesos, valoraciones, fotos y sesiones en curso. Amigos solo muestra la actividad que compartes con amistades aceptadas.</p><a class="btn secondary" href="#/more">Ajustes y exportación manual</a>`;
   view.append(card);
+  renderAccountSecurity(card);
   function paint(info) {
     if (!card.isConnected) return;
     const titles = { unavailable: 'Copia en la nube pendiente de activar', syncing: 'Guardando copia cifrada…', ready: 'Guardado en la nube', pending: 'Cambios pendientes de subir', offline: 'Sin conexión · copia en este móvil', error: 'Copia pendiente · datos en este móvil', conflict: 'Revisa las copias de tus móviles', 'needs-code': 'Introduce tu código de recuperación' };

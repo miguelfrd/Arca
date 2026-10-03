@@ -266,6 +266,14 @@ export async function action(path, body) {
   }
   return result;
 }
+export async function reconnectIdentity(values, cloudKey) {
+  if(values.accountId!==cachedState?.profile.id) throw new SocialError('Ese código pertenece a otra cuenta.',409);
+  const owner=makeIdentity();
+  const data=await api('/account/recover',{method:'POST',anonymous:true,body:{...values,deviceId:owner.deviceId,deviceSecret:owner.deviceSecret}});
+  identity={...owner,registered:true,entryMode:identity.entryMode};
+  await store.setAll({identity,state:data,'cloud-key':cloudKey});
+  await useState(data); return data;
+}
 export async function loadMore(cursor) {
   const data = await api('/feed?before=' + encodeURIComponent(cursor));
   const posts = new Map(cachedState.posts.map(post => [post.id, post]));

@@ -1,5 +1,5 @@
 import { socialStore as store } from './social-store-v2.js';
-import { api, snapshot, subscribe, recoverIdentity } from './social-v2.js';
+import { api, snapshot, subscribe, recoverIdentity, reconnectIdentity } from './social-v2.js';
 
 const COLLECTIONS = ['exercises','routines','folders','workouts','measurements','progressPhotos','workoutPhotos','programState','aliases','kv'];
 const keyField = name => name === 'progressPhotos' ? 'date' : name === 'workoutPhotos' ? 'workoutId' : name === 'programState' ? 'programId' : name === 'kv' ? 'key' : 'id';
@@ -21,6 +21,14 @@ async function encrypt(bytes, key) {
   return { iv: hex(iv), bytes: new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, bytes)) };
 }
 async function decrypt(bytes, iv, key) { return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unhex(iv) }, key, bytes)); }
+async function decryptWithKeys(bytes,iv,keys) {
+  for(const key of Array.isArray(keys)?keys:[keys]) { try { return await decrypt(bytes,iv,key); } catch {} }
+  throw Error('No se ha podido descifrar la copia. No se ha cambiado nada en tu móvil.');
+}
+async function prepareKeys(saved) {
+  const keys=await Promise.all([saved.secret,...saved.previousSecrets||[]].map(encryptionKey));
+  return {...saved,key:keys[0],keys,blobNamespace:await proof(saved.secret)};
+}
 
 export function markCloudDirty() {
   if (suppress) return Promise.resolve();
@@ -86,7 +94,7 @@ async function accountKey(info) {
   }
   try { await api('/account/recovery', { method: 'PUT', body: { secret: await proof(saved.secret) } }); }
   catch (error) { if (error.code === 'recovery_exists') patch({ status: 'needs-code' }); throw error; }
-  return { ...saved, key: await encryptionKey(saved.secret) };
+  return prepareKeys(saved);
 }
 async function readDatabase() {
   return new Promise((resolve, reject) => {
@@ -108,7 +116,7 @@ async function encodeValue(value, account) {
     if (value.size + 28 > 16777216) throw Error('Hay una foto demasiado grande para la copia privada. Sigue guardada en este móvil.');
     const bytes = new Uint8Array(await value.arrayBuffer());
     const digest = hex(await crypto.subtle.digest('SHA-256', bytes));
-    const cacheKey = 'cloud-blob:' + account.accountId + ':' + digest;
+    const cacheKey = 'cloud-blob:' + account.accountId + ':' + (account.blobNamespace || await proof(account.secret)) + ':' + digest;
     let id = await store.get(cacheKey);
     if (!id) {
       id = crypto.randomUUID(); const encrypted = await encrypt(bytes, account.key);
@@ -128,7 +136,7 @@ async function decodeValue(value, key) {
     if (!/^[a-f0-9-]{36}$/.test(meta.id || '') || !Number.isSafeInteger(meta.size) || meta.size < 0 || meta.size > 16777216) throw Error('La copia contiene una foto no válida.');
     const blob = await api('/backup/blobs/' + meta.id, { photo: true, timeout: 120000 });
     const packed = new Uint8Array(await blob.arrayBuffer());
-    const bytes = await decrypt(packed.slice(12), hex(packed.slice(0,12)), key);
+    const bytes = await decryptWithKeys(packed.slice(12), hex(packed.slice(0,12)), key);
     if (bytes.length !== meta.size) throw Error('La foto no se ha podido verificar. No se ha cambiado nada.');
     return new Blob([bytes], { type: meta.type || 'application/octet-stream' });
   }
@@ -146,14 +154,14 @@ async function makePacket(account, dirty, version) {
 }
 async function downloadSnapshot(account, head) {
   const blob = await api('/backup/snapshot?revision=' + head.revision, { photo: true, timeout: 120000 });
-  const bytes = await decrypt(await blob.arrayBuffer(), head.iv, account.key);
+  const bytes = await decryptWithKeys(await blob.arrayBuffer(), head.iv, account.keys || [account.key]);
   const content = JSON.parse(new TextDecoder().decode(bytes));
   if (content.format !== 'ferrum-private-v1' || content.accountId !== account.accountId || !content.collections || !content.locals) throw Error('Esta copia no pertenece a tu cuenta.');
   for (const name of COLLECTIONS) {
     const rows = content.collections[name];
     if (!Array.isArray(rows) || rows.some(row => !row || typeof row[keyField(name)] !== 'string')) throw Error('La estructura de la copia no es válida.');
   }
-  return decodeValue(content, account.key);
+  return decodeValue(content, account.keys || [account.key]);
 }
 async function applySnapshot(content) {
   // Download and validate all photos before this atomic transaction replaces any local record.
@@ -196,6 +204,8 @@ export function synchronizeCloud() {
     if (!await supported()) { patch({ status: 'unavailable', error: '' }); return; }
     patch({ status: 'syncing', error: '' });
     try {
+      const rotation=await store.get('cloud-pending-rotation');
+      if(rotation) await finishRotation(rotation);
       const account = await accountKey(info);
       let version = await store.get('cloud-version') || 0;
       // A lost acknowledgement is retried with exactly the same ciphertext and mutation.
@@ -246,34 +256,80 @@ export function synchronizeCloud() {
 }
 export async function recoveryCode() {
   const saved = await store.get('cloud-key');
-  return saved ? saved.accountId + '.' + saved.secret : null;
+  return saved ? saved.code || saved.accountId + '.' + saved.secret : null;
 }
 export async function markRecoverySaved() { await store.set('cloud-recovery-saved', true); patch({ recoverySaved: true }); }
 export async function reconnectKey(code) {
-  const saved = parseCode(code), info = snapshot();
+  const saved = await parseCode(code), info = snapshot();
   if (saved.accountId !== info.state?.profile.id) throw Error('Ese código pertenece a otra cuenta.');
-  await api('/account/recovery', { method: 'PUT', body: { secret: await proof(saved.secret) } });
+  try { await api('/account/recovery', { method: 'PUT', body: { secret: await proof(saved.secret) } }); }
+  catch(error) { if(error.status!==401) throw error; await reconnectIdentity({accountId:saved.accountId,secret:await proof(saved.secret)},saved); }
   await store.set('cloud-key', saved); await synchronizeCloud();
 }
-function parseCode(code) {
-  const [accountId,secret] = String(code).trim().split('.');
+async function parseCode(code) {
+  code=String(code).trim(); const parts=code.split('.');
+  const [accountId,secret,wrapped] = parts;
   if (!/^[a-f0-9-]{36}$/.test(accountId || '') || !/^[a-f0-9]{64}$/.test(secret || '')) throw Error('El código de recuperación no tiene el formato correcto.');
-  return { accountId, secret };
+  if(parts.length<2 || parts.length>3) throw Error('El código de recuperación no tiene el formato correcto.');
+  let previousSecrets=[];
+  if(wrapped) {
+    if(!/^[a-f0-9]+$/.test(wrapped) || wrapped.length<56 || wrapped.length>131072 || wrapped.length%2) throw Error('El código de recuperación está incompleto.');
+    const packed=unhex(wrapped);
+    previousSecrets=JSON.parse(new TextDecoder().decode(await decrypt(packed.slice(12),hex(packed.slice(0,12)),await encryptionKey(secret))));
+    if(!Array.isArray(previousSecrets) || previousSecrets.length>512 || previousSecrets.some(x=>!/^[a-f0-9]{64}$/.test(x))) throw Error('El código de recuperación no es válido.');
+  }
+  return { accountId, secret, previousSecrets, code };
 }
 export async function recoverAccount(code) {
   const { hasPersonalData } = await import('./invite-v2.js');
-  const saved = parseCode(code), current = await store.get('cloud-key');
+  const saved = await parseCode(code), current = await store.get('cloud-key');
   const resume = Boolean(await store.get('cloud-restore-pending')) && current?.accountId === saved.accountId && current?.secret === saved.secret;
   if (!resume && (await hasPersonalData() || (await store.get('identity'))?.registered)) throw Error('Este móvil ya tiene datos o una cuenta. Recupera tu cuenta en un dispositivo vacío para conservarlos.');
   if (!await supported()) throw Error('El servidor todavía no ofrece recuperación de cuentas.');
   const info = resume ? await store.get('state') : await recoverIdentity({ accountId: saved.accountId, secret: await proof(saved.secret) }, saved);
   await store.set('cloud-recovery-saved', true);
-  const account = { ...saved, key: await encryptionKey(saved.secret) };
+  const account = await prepareKeys(saved);
   const head = await api('/backup/head');
   if (head.revision) await applySnapshot(await downloadSnapshot(account, head));
   await store.set('cloud-version', head.revision); await store.remove('cloud-restore-pending'); await store.remove('cloud-dirty');
   await store.set('cloud-last-sync', Date.now());
   return info;
+}
+async function finishRotation(rotation) {
+  const packet=rotation.packet;
+  const result=await api('/account/recovery/rotate',{method:'PUT',timeout:120000,headers:{
+    'X-Ferrum-Base-Version':String(packet.baseVersion),'X-Ferrum-Mutation':packet.mutation,'X-Ferrum-IV':packet.iv,
+    'X-Ferrum-Current-Recovery':rotation.currentProof,'X-Ferrum-New-Recovery':rotation.nextProof
+  },body:new Blob([packet.bytes],{type:'application/octet-stream'})});
+  await store.setAll({'cloud-key':rotation.next,'cloud-version':result.revision,'cloud-recovery-saved':false});
+  await store.removeMatchingRevision('cloud-dirty',packet.revision);
+  await store.remove('cloud-pending-rotation');
+  patch({recoverySaved:false,revision:result.revision});
+  return rotation.next.code;
+}
+export async function rotateRecovery() {
+  await synchronizeCloud();
+  if(running) await running;
+  if(!await supported() || capabilities.accountSecurity!==1) throw Error('El servidor todavía no admite esta operación.');
+  if(state.status!=='ready') throw Error('Espera a que tu copia esté guardada en la nube antes de renovar el código.');
+  running=(async()=>{
+    const account=await accountKey(snapshot());
+    if((account.previousSecrets||[]).length>=512) throw Error('Este historial de claves necesita una migración antes de renovarse.');
+    const next={accountId:account.accountId,secret:hex(crypto.getRandomValues(new Uint8Array(32))),previousSecrets:[account.secret,...account.previousSecrets||[]]};
+    const wrapped=await encrypt(encoder.encode(JSON.stringify(next.previousSecrets)),await encryptionKey(next.secret));
+    next.code=next.accountId+'.'+next.secret+'.'+wrapped.iv+hex(wrapped.bytes);
+    await markCloudDirty();
+    const dirty=await store.get('cloud-dirty'),head=await api('/backup/head');
+    if(head.revision!==(await store.get('cloud-version')||0)) throw Object.assign(Error('Revisa el conflicto entre tus móviles antes de renovar.'),{code:'backup_conflict'});
+    const packet=await makePacket(await prepareKeys(next),dirty,head.revision);
+    if((await store.get('cloud-dirty'))?.revision!==dirty.revision) throw Error('Se han guardado cambios mientras renovabas. Vuelve a intentarlo.');
+    const rotation={next,packet,currentProof:await proof(account.secret),nextProof:await proof(next.secret)};
+    await store.set('cloud-pending-rotation',rotation);
+    patch({status:'syncing',error:''});
+    return finishRotation(rotation);
+  })().finally(()=>{running=null;});
+  try { const code=await running; await synchronizeCloud(); return code; }
+  catch(error) { patch({status:'error',error:'Renovación pendiente: '+error.message}); throw error; }
 }
 export async function resolveCloudConflict(keepLocal) {
   await running;
