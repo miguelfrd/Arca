@@ -1,7 +1,7 @@
 import { db, toast } from './platform-v2.js';
 import { socialStore } from './social-store-v2.js';
-import { renderAccountSecurity } from './account-security-v2.js';
-import { cloudSnapshot, subscribeCloud, synchronizeCloud, recoveryCode, markRecoverySaved, reconnectKey, resolveCloudConflict, restorePreviousLocal, cloudHistory, restoreCloudVersion } from './cloud-v2.js';
+import { renderAccountSecurity, offerRecoveryCode } from './account-security-v2.js';
+import { cloudSnapshot, subscribeCloud, synchronizeCloud, reconnectKey, resolveCloudConflict, restorePreviousLocal, cloudHistory, restoreCloudVersion } from './cloud-v2.js';
 
 let cleanup;
 export function stopDataStatus() { cleanup?.(); cleanup = null; }
@@ -19,11 +19,11 @@ export async function renderDataStatus(view) {
   renderAccountSecurity(card);
   function paint(info) {
     if (!card.isConnected) return;
-    const titles = { unavailable: 'Copia en la nube pendiente de activar', syncing: 'Guardando copia cifrada…', ready: 'Guardado en la nube', pending: 'Cambios pendientes de subir', offline: 'Sin conexión · copia en este móvil', error: 'Copia pendiente · datos en este móvil', conflict: 'Revisa las copias de tus móviles', 'needs-code': 'Introduce tu código de recuperación' };
-    card.querySelector('[data-cloud-title]').textContent = titles[info.status] || 'Guardado en este móvil';
+    const titles = { restoring: 'Restaurando cuenta y datos…', unavailable: 'Copia en la nube pendiente de activar', syncing: 'Guardando copia cifrada…', ready: 'Guardado en la nube', pending: 'Cambios pendientes de subir', offline: 'Sin conexión · copia en este móvil', error: 'Copia pendiente · datos en este móvil', conflict: 'Revisa las copias de tus móviles', 'needs-code': 'Introduce tu código de recuperación' };
+    card.querySelector('[data-cloud-title]').textContent = info.status === 'ready' && !info.recoverySaved ? 'Copia confirmada · guarda tu código' : info.status === 'ready' && info.recoverySaved ? 'Copia recuperable' : info.status === 'syncing' && !info.revision ? 'Preparando primera copia…' : titles[info.status] || 'Guardado en este móvil';
     const at = info.lastSync ? new Date(info.lastSync).toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-    card.querySelector('[data-cloud-detail]').textContent = info.error || (info.status === 'unavailable' ? 'El servidor aún necesita la actualización de cuentas y copias privadas. Todavía no puedes recuperar todos tus datos al cambiar de móvil.' : info.status === 'ready' ? `Última comprobación: ${at}. ${info.recoverySaved ? 'Código de recuperación copiado: consérvalo fuera de Ferrum.' : 'Guarda tu código de recuperación fuera de Ferrum para poder cambiar de móvil.'}` : 'Puedes seguir entrenando. Los cambios permanecen en este móvil hasta que el servidor confirme la copia.');
-    card.querySelector('[data-cloud-code]').hidden = ['unavailable','needs-code'].includes(info.status) || !info.revision;
+    card.querySelector('[data-cloud-detail]').textContent = info.error || info.warning || (info.status === 'unavailable' ? 'El servidor aún necesita la actualización de cuentas y copias privadas. Todavía no puedes recuperar todos tus datos al cambiar de móvil.' : info.status === 'ready' ? `Última comprobación: ${at}. ${info.recoverySaved ? 'Conservación del código fuera del móvil confirmada.' : 'Guarda tu código de recuperación fuera de Ferrum para poder cambiar de móvil.'}` : 'Puedes seguir entrenando. Los cambios permanecen en este móvil hasta que el servidor confirme la copia.');
+    card.querySelector('[data-cloud-code]').hidden = !info.recoveryAvailable;
     card.querySelector('[data-cloud-history]').hidden = !info.revision || info.status === 'unavailable';
     card.querySelector('[data-cloud-key]').hidden = info.status !== 'needs-code';
     card.querySelector('[data-cloud-conflict]').hidden = info.status !== 'conflict';
@@ -32,18 +32,7 @@ export async function renderDataStatus(view) {
     const button = event.currentTarget;
     button.disabled = true; try { await synchronizeCloud(); } finally { if (button.isConnected) button.disabled = false; }
   });
-  card.querySelector('[data-cloud-code]').addEventListener('click', async () => {
-    const code = await recoveryCode(); if (!code) return toast('La cuenta aún no tiene código de recuperación');
-    const dialog = document.createElement('dialog'); dialog.className = 'fui-profile-dialog';
-    dialog.innerHTML = `<div class="fui-dialog-head"><h2>Guarda este código</h2><button class="icon-btn ghost" data-close aria-label="Cerrar">×</button></div><p>Es la llave de tu cuenta y de tu copia privada. Guárdalo en tu gestor de contraseñas. Quien lo tenga podrá acceder a tus datos.</p><textarea readonly rows="4" aria-label="Código de recuperación" spellcheck="false"></textarea><button class="btn" data-copy>Copiar código</button><p class="small muted">No se puede recuperar este código desde el servidor si lo pierdes.</p>`;
-    dialog.querySelector('textarea').value = code; document.body.append(dialog); dialog.showModal();
-    dialog.querySelector('[data-close]').addEventListener('click', () => dialog.close());
-    dialog.addEventListener('close', () => dialog.remove(), { once: true });
-    dialog.querySelector('[data-copy]').addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(code); await markRecoverySaved(); toast('Código copiado. Guárdalo fuera de Ferrum.'); }
-      catch { dialog.querySelector('textarea').select(); toast('Selecciona y copia el código'); }
-    });
-  });
+  card.querySelector('[data-cloud-code]').addEventListener('click', offerRecoveryCode);
   card.querySelector('[data-cloud-history]').addEventListener('click', async event => {
     const button = event.currentTarget; button.disabled = true;
     try {

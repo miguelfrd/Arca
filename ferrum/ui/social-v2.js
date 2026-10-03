@@ -67,12 +67,12 @@ export async function api(path, options = {}) {
     throw new SocialError('Sin conexión con Amigos. Los cambios se guardan para enviarlos después.');
   } finally { clearTimeout(timeout); options.signal?.removeEventListener('abort', abort); }
 }
-async function useState(state) {
+async function useState(state, notify = true) {
   cachedState = state; connection.lastSync = Date.now(); connection.error = ''; connection.online = true;
   await store.set('state', state); await store.set('lastSync', connection.lastSync);
   const permitted = new Set(state.posts.filter(post => post.hasPhoto).map(post => post.id));
   for (const [key, value] of photoUrls) if (!permitted.has(key)) { URL.revokeObjectURL(value.url); photoUrls.delete(key); }
-  announce();
+  if (notify) announce();
 }
 export async function initialize(db, domain) {
   if (started) return;
@@ -208,8 +208,8 @@ export async function join(values) {
     body: { ...values, sharing: false, deviceId: owner.deviceId, deviceSecret: owner.deviceSecret } });
   // Persist the next step before announcing registration, so rendering cannot skip it.
   onboarding = { step: 'people', selected: [], removeAutomaticRequests: true };
-  await store.set('onboarding', onboarding);
-  identity.registered = true; await store.set('identity', identity); await useState(data);
+  await store.setAll({ onboarding, identity: { ...owner, registered: true }, state: data });
+  identity.registered = true; await useState(data);
   return data;
 }
 export async function bootstrapOwner(code, nickname) {
@@ -255,8 +255,9 @@ export async function recoverIdentity(values, cloudKey) {
   const next = { ...owner, registered: true, entryMode: 'invited' };
   await store.setAll({ identity: next, state: data, 'cloud-key': cloudKey, 'cloud-restore-pending': true });
   identity = next; onboarding = null; await store.remove('onboarding');
-  await useState(data); return data;
+  await useState(data, false); return data;
 }
+export function announceRecoveredIdentity() { announce(); }
 export async function action(path, body) {
   const result = await api(path, { method: path === '/profile' ? 'PATCH' : 'POST', body });
   if (result.profile) await useState(result);

@@ -1,5 +1,5 @@
 import { socialStore as store } from './social-store-v2.js';
-import { api, snapshot, subscribe, recoverIdentity, reconnectIdentity } from './social-v2.js';
+import { api, snapshot, subscribe, recoverIdentity, reconnectIdentity, announceRecoveredIdentity } from './social-v2.js';
 
 const COLLECTIONS = ['exercises','routines','folders','workouts','measurements','progressPhotos','workoutPhotos','programState','aliases','kv'];
 const keyField = name => name === 'progressPhotos' ? 'date' : name === 'workoutPhotos' ? 'workoutId' : name === 'programState' ? 'programId' : name === 'kv' ? 'key' : 'id';
@@ -8,7 +8,31 @@ const hex = value => [...new Uint8Array(value)].map(x => x.toString(16).padStart
 const unhex = value => Uint8Array.from(value.match(/../g) || [], x => parseInt(x, 16));
 const encoder = new TextEncoder();
 let installed, db, running, suppress = false, timer, capabilityAt = 0, capabilities, dirtyWrites = Promise.resolve();
-let state = { status: 'unavailable', error: '', lastSync: 0, revision: 0, pending: false, recoverySaved: false };
+// Every cloud mutation uses this queue, including recovery announcements.
+let coordinator = Promise.resolve(), replacing = false;
+const activeWrites = new Set();
+const nativeStorage = { setItem: Storage.prototype.setItem, removeItem: Storage.prototype.removeItem };
+function coordinate(operation) {
+  const result = coordinator.then(operation);
+  coordinator = result.catch(() => {});
+  return result;
+}
+function assertWritable() {
+  if (replacing) throw Error('Restauración en curso. Espera a que termine antes de guardar cambios.');
+}
+async function withReplacement(operation) {
+  replacing = true;
+  patch({ status: 'restoring', error: '' });
+  try {
+    await Promise.allSettled([...activeWrites]);
+    await dirtyWrites;
+    return await operation();
+  } finally {
+    // An incomplete journal keeps editing blocked until replay succeeds.
+    replacing = Boolean(await store.get('cloud-restore-journal') || await store.get('cloud-restore-pending'));
+  }
+}
+let state = { status: 'unavailable', error: '', lastSync: 0, revision: 0, pending: false, recoverySaved: false, recoveryAvailable: false, warning: '' };
 const listeners = new Set();
 export const cloudSnapshot = () => ({ ...state });
 export function subscribeCloud(listener) { listeners.add(listener); return () => listeners.delete(listener); }
@@ -46,33 +70,48 @@ export async function initializeCloud(database) {
   if (installed) return; installed = true; db = database;
   state.revision = await store.get('cloud-version') || 0;
   state.lastSync = await store.get('cloud-last-sync') || 0;
-  state.recoverySaved = Boolean(await store.get('cloud-recovery-saved'));
+  const confirmation = await store.get('cloud-recovery-saved');
+  state.recoverySaved = confirmation?.external === true && confirmation.code === await recoveryCode();
   state.pending = Boolean(await store.get('cloud-dirty'));
+  state.recoveryAvailable = Boolean(await store.get('cloud-key'));
+  replacing = Boolean(await store.get('cloud-restore-journal') || await store.get('cloud-restore-pending'));
   for (const method of ['put','bulkPut','del','clear']) {
     const original = db[method].bind(db);
     db[method] = async (...args) => {
-      if (!suppress) await markCloudDirty().catch(() => {});
-      const result = await original(...args);
-      if (!suppress) {
-        await markCloudDirty().catch(() => {});
+      assertWritable();
+      const write = (async () => {
+        await markCloudDirty();
+        const result = await original(...args);
+        await markCloudDirty();
         window.dispatchEvent(new CustomEvent('ferrum:data-changed'));
-      }
-      return result;
+        return result;
+      })();
+      activeWrites.add(write);
+      try { return await write; } finally { activeWrites.delete(write); }
     };
   }
   // Drafts and the active session are part of the private copy, never account/PIN secrets.
   for (const method of ['setItem','removeItem']) {
     const original = Storage.prototype[method];
     Storage.prototype[method] = function(key, ...args) {
+      if (this === localStorage && localKey(String(key))) assertWritable();
       const result = original.call(this, key, ...args);
       if (this === localStorage && localKey(String(key)) && !suppress) markCloudDirty();
       return result;
     };
   }
+  const originalClear = Storage.prototype.clear;
+  Storage.prototype.clear = function() {
+    if (this === localStorage) assertWritable();
+    const result = originalClear.call(this);
+    if (this === localStorage) markCloudDirty();
+    return result;
+  };
   subscribe(info => { if (info.identity?.registered) synchronizeCloud(); });
   window.addEventListener('online', () => { capabilityAt = 0; synchronizeCloud(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) synchronizeCloud(); });
   setInterval(() => { if (!document.hidden) synchronizeCloud(); }, 30000);
+  await coordinate(resumeJournal);
   synchronizeCloud();
 }
 async function supported() {
@@ -94,6 +133,8 @@ async function accountKey(info) {
   }
   try { await api('/account/recovery', { method: 'PUT', body: { secret: await proof(saved.secret) } }); }
   catch (error) { if (error.code === 'recovery_exists') patch({ status: 'needs-code' }); throw error; }
+  patch({ recoveryAvailable: true });
+  window.dispatchEvent(new CustomEvent('ferrum:recovery-available'));
   return prepareKeys(saved);
 }
 async function readDatabase() {
@@ -113,7 +154,13 @@ async function readDatabase() {
 }
 async function encodeValue(value, account) {
   if (value instanceof Blob) {
-    if (value.size + 28 > 16777216) throw Error('Hay una foto demasiado grande para la copia privada. Sigue guardada en este móvil.');
+    if (value.size + 28 > 16777216) {
+      const chunks = [];
+      for (let offset = 0; offset < value.size; offset += 4 * 1024 * 1024)
+        chunks.push(await encodeValue(value.slice(offset, offset + 4 * 1024 * 1024), account));
+      patch({ warning: 'Las fotos grandes se guardan en fragmentos cifrados.' });
+      return { $ferrumChunks: { chunks, size: value.size, type: value.type } };
+    }
     const bytes = new Uint8Array(await value.arrayBuffer());
     const digest = hex(await crypto.subtle.digest('SHA-256', bytes));
     const cacheKey = 'cloud-blob:' + account.accountId + ':' + (account.blobNamespace || await proof(account.secret)) + ':' + digest;
@@ -131,6 +178,17 @@ async function encodeValue(value, account) {
   return value;
 }
 async function decodeValue(value, key) {
+  if (value && Object.keys(value).length === 1 && value.$ferrumChunks) {
+    const meta = value.$ferrumChunks;
+    if (!Array.isArray(meta.chunks) || !Number.isSafeInteger(meta.size) || meta.size < 0)
+      throw Error('Los fragmentos de la copia no son válidos.');
+    const chunks = [];
+    for (const chunk of meta.chunks) chunks.push(await decodeValue(chunk, key));
+    if (chunks.some(chunk => !(chunk instanceof Blob))) throw Error('Fragmento no válido.');
+    const blob = new Blob(chunks, { type: meta.type });
+    if (blob.size !== meta.size) throw Error('La copia fragmentada está incompleta.');
+    return blob;
+  }
   if (value && typeof value === 'object' && Object.keys(value).length === 1 && value.$ferrumBlob) {
     const meta = value.$ferrumBlob;
     if (!/^[a-f0-9-]{36}$/.test(meta.id || '') || !Number.isSafeInteger(meta.size) || meta.size < 0 || meta.size > 16777216) throw Error('La copia contiene una foto no válida.');
@@ -148,14 +206,28 @@ async function makePacket(account, dirty, version) {
   const collections = await readDatabase(), locals = {};
   for (let i = 0; i < localStorage.length; i++) { const key = localStorage.key(i); if (localKey(key)) locals[key] = localStorage.getItem(key); }
   const content = await encodeValue({ format: 'ferrum-private-v1', accountId: account.accountId, collections, locals, at: Date.now() }, account);
-  const encrypted = await encrypt(encoder.encode(JSON.stringify(content)), account.key);
-  if (encrypted.bytes.length > 8388608) throw Error('Tu historial supera el tamaño admitido para esta copia. Tus datos siguen en el móvil.');
+  let bytes = encoder.encode(JSON.stringify(content));
+  if (bytes.length + 16 > 8388608) {
+    const chunks = [];
+    for (let offset = 0; offset < bytes.length; offset += 4 * 1024 * 1024)
+      chunks.push(await encodeValue(new Blob([bytes.slice(offset, offset + 4 * 1024 * 1024)]), account));
+    bytes = encoder.encode(JSON.stringify({ format: 'ferrum-private-chunks-v1', accountId: account.accountId, chunks }));
+    patch({ warning: 'El historial grande se guarda en fragmentos cifrados.' });
+  }
+  const encrypted = await encrypt(bytes, account.key);
+  if (encrypted.bytes.length > 8388608) throw Error('El índice de fragmentos supera el límite de la copia.');
   return { ...encrypted, revision: dirty.revision, baseVersion: version, mutation: crypto.randomUUID() };
 }
 async function downloadSnapshot(account, head) {
   const blob = await api('/backup/snapshot?revision=' + head.revision, { photo: true, timeout: 120000 });
   const bytes = await decryptWithKeys(await blob.arrayBuffer(), head.iv, account.keys || [account.key]);
-  const content = JSON.parse(new TextDecoder().decode(bytes));
+  let content = JSON.parse(new TextDecoder().decode(bytes));
+  if (content.format === 'ferrum-private-chunks-v1' && content.accountId === account.accountId && Array.isArray(content.chunks)) {
+    const chunks = [];
+    for (const chunk of content.chunks) chunks.push(await decodeValue(chunk, account.keys || [account.key]));
+    if (chunks.some(chunk => !(chunk instanceof Blob))) throw Error('Fragmento de historial no válido.');
+    content = JSON.parse(await new Blob(chunks).text());
+  }
   if (content.format !== 'ferrum-private-v1' || content.accountId !== account.accountId || !content.collections || !content.locals) throw Error('Esta copia no pertenece a tu cuenta.');
   for (const name of COLLECTIONS) {
     const rows = content.collections[name];
@@ -189,20 +261,50 @@ async function applySnapshot(content) {
       };
     });
     const oldKeys = Object.keys(localStorage).filter(localKey);
-    for (const key of oldKeys) localStorage.removeItem(key);
-    for (const [key,value] of Object.entries(content.locals)) if (localKey(key) && typeof value === 'string') localStorage.setItem(key, value);
+    for (const key of oldKeys) nativeStorage.removeItem.call(localStorage, key);
+    for (const [key,value] of Object.entries(content.locals)) if (localKey(key) && typeof value === 'string') nativeStorage.setItem.call(localStorage, key, value);
   } finally { suppress = false; }
   window.dispatchEvent(new CustomEvent('ferrum:data-changed'));
 }
+async function localCopy() {
+  const locals = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (localKey(key)) locals[key] = localStorage.getItem(key);
+  }
+  return { collections: await readDatabase(), locals, at: Date.now() };
+}
+async function resumeJournal() {
+  const journal = await store.get('cloud-restore-journal');
+  if (!journal) return;
+  return withReplacement(async () => {
+    await applySnapshot(journal.content);
+    await store.commitCloud({ version: journal.version, dirtyRevision: journal.dirtyRevision,
+      restore: true, markDirty: journal.markDirty });
+    const pending = Boolean(await store.get('cloud-dirty'));
+    patch({ revision: journal.version, pending, status: pending ? 'pending' : 'ready' });
+    if (pending) { clearTimeout(timer); timer = setTimeout(() => synchronizeCloud(), 3500); }
+    window.dispatchEvent(new Event('hashchange'));
+  });
+}
+async function replaceSnapshot(content, version, markDirty = false) {
+  await store.set('cloud-restore-journal', { content, version, markDirty,
+    dirtyRevision: (await store.get('cloud-dirty'))?.revision });
+  await resumeJournal();
+}
 export function synchronizeCloud() {
   if (running) return running;
-  running = (async () => {
-    await dirtyWrites.catch(() => {});
+  running = coordinate(syncCloud).finally(() => { running = null; });
+  return running;
+}
+async function syncCloud() {
+  try {
+    await resumeJournal();
+    await dirtyWrites;
     const info = snapshot();
-    if (!info.identity?.registered || !info.state || info.onboarding) return;
+    if (!info.identity?.registered || !info.state) return;
     if (navigator.onLine === false) { patch({ status: 'offline', pending: Boolean(await store.get('cloud-dirty')) }); return; }
     patch({ status: 'syncing', error: '' });
-    try {
       if (!await supported()) { patch({ status: 'unavailable', error: '' }); return; }
       const rotation=await store.get('cloud-pending-rotation');
       if(rotation) await finishRotation(rotation);
@@ -214,20 +316,18 @@ export function synchronizeCloud() {
         const result = await api('/backup/snapshot', { method: 'PUT', timeout: 120000,
           headers: { 'X-Ferrum-Base-Version': String(previous.baseVersion), 'X-Ferrum-Mutation': previous.mutation, 'X-Ferrum-IV': previous.iv },
           body: new Blob([previous.bytes], { type: 'application/octet-stream' }) });
-        await store.set('cloud-version', result.revision); version = result.revision;
-        await store.remove('cloud-pending-snapshot'); await store.removeMatchingRevision('cloud-dirty', previous.revision);
+        await store.commitCloud({ version: result.revision, dirtyRevision: previous.revision }); version = result.revision;
       }
       const head = await api('/backup/head');
       let dirty = await store.get('cloud-dirty');
       const restorePending = await store.get('cloud-restore-pending');
       if (restorePending) {
-        if (head.revision > 0) {
-          const content = await downloadSnapshot(account, head);
-          await applySnapshot(content);
-        }
-        version = head.revision; await store.set('cloud-version', version);
-        await store.remove('cloud-restore-pending'); await store.remove('cloud-dirty'); dirty = null;
-        window.dispatchEvent(new Event('hashchange'));
+        await withReplacement(async () => {
+          const content = head.revision > 0 ? await downloadSnapshot(account, head) : await localCopy();
+          await replaceSnapshot(content, head.revision);
+        });
+        version = head.revision; dirty = await store.get('cloud-dirty');
+        patch({ restoredRevision: head.revision, warning: head.revision ? state.warning : 'Cuenta recuperada sin snapshot: todavía no había una copia de datos.' });
       } else if (head.revision !== version) throw Object.assign(Error('Hay una copia de otro móvil. Tus cambios locales se conservan.'), { code: 'backup_conflict' });
       if (!head.revision && !dirty) { await markCloudDirty(); dirty = await store.get('cloud-dirty'); }
       if (dirty) {
@@ -240,8 +340,7 @@ export function synchronizeCloud() {
         const result = await api('/backup/snapshot', { method: 'PUT', timeout: 120000,
           headers: { 'X-Ferrum-Base-Version': String(packet.baseVersion), 'X-Ferrum-Mutation': packet.mutation, 'X-Ferrum-IV': packet.iv },
           body: new Blob([packet.bytes], { type: 'application/octet-stream' }) });
-        await store.set('cloud-version', result.revision); version = result.revision;
-        await store.remove('cloud-pending-snapshot'); await store.removeMatchingRevision('cloud-dirty', packet.revision);
+        await store.commitCloud({ version: result.revision, dirtyRevision: packet.revision }); version = result.revision;
       }
       const at = Date.now(); await store.set('cloud-last-sync', at);
       const pending = Boolean(await store.get('cloud-dirty'));
@@ -251,20 +350,25 @@ export function synchronizeCloud() {
       patch({ status: error.code === 'backup_conflict' ? 'conflict' : state.status === 'needs-code' ? 'needs-code' : error.status === 0 ? 'offline' : 'error', error: error.message,
         pending: Boolean(await store.get('cloud-dirty')) });
     }
-  })().finally(() => { running = null; });
-  return running;
 }
 export async function recoveryCode() {
   const saved = await store.get('cloud-key');
   return saved ? saved.code || saved.accountId + '.' + saved.secret : null;
 }
-export async function markRecoverySaved() { await store.set('cloud-recovery-saved', true); patch({ recoverySaved: true }); }
-export async function reconnectKey(code) {
+async function saveRecoveryAcknowledgement(expectedCode) {
+  if (expectedCode && expectedCode !== await recoveryCode()) throw Error('El código ha cambiado. Guarda el código actual.');
+  await store.set('cloud-recovery-saved', { external: true, code: await recoveryCode(), at: Date.now() });
+  patch({ recoverySaved: true });
+}
+export function markRecoverySaved(expectedCode) { return coordinate(() => saveRecoveryAcknowledgement(expectedCode)); }
+export function reconnectKey(code) {
+  return coordinate(async () => {
   const saved = await parseCode(code), info = snapshot();
   if (saved.accountId !== info.state?.profile.id) throw Error('Ese código pertenece a otra cuenta.');
   try { await api('/account/recovery', { method: 'PUT', body: { secret: await proof(saved.secret) } }); }
   catch(error) { if(error.status!==401) throw error; await reconnectIdentity({accountId:saved.accountId,secret:await proof(saved.secret)},saved); }
-  await store.set('cloud-key', saved); await synchronizeCloud();
+  await store.set('cloud-key', saved); await syncCloud();
+  });
 }
 async function parseCode(code) {
   code=String(code).trim(); const parts=code.split('.');
@@ -280,20 +384,22 @@ async function parseCode(code) {
   }
   return { accountId, secret, previousSecrets, code };
 }
-export async function recoverAccount(code) {
-  const { hasPersonalData } = await import('./invite-v2.js');
-  const saved = await parseCode(code), current = await store.get('cloud-key');
-  const resume = Boolean(await store.get('cloud-restore-pending')) && current?.accountId === saved.accountId && current?.secret === saved.secret;
-  if (!resume && (await hasPersonalData() || (await store.get('identity'))?.registered)) throw Error('Este móvil ya tiene datos o una cuenta. Recupera tu cuenta en un dispositivo vacío para conservarlos.');
-  if (!await supported()) throw Error('El servidor todavía no ofrece recuperación de cuentas.');
-  const info = resume ? await store.get('state') : await recoverIdentity({ accountId: saved.accountId, secret: await proof(saved.secret) }, saved);
-  await store.set('cloud-recovery-saved', true);
-  const account = await prepareKeys(saved);
-  const head = await api('/backup/head');
-  if (head.revision) await applySnapshot(await downloadSnapshot(account, head));
-  await store.set('cloud-version', head.revision); await store.remove('cloud-restore-pending'); await store.remove('cloud-dirty');
-  await store.set('cloud-last-sync', Date.now());
-  return info;
+export function recoverAccount(code) {
+  return coordinate(async () => {
+    const { hasPersonalData } = await import('./invite-v2.js');
+    const saved = await parseCode(code), current = await store.get('cloud-key');
+    const resume = Boolean(await store.get('cloud-restore-pending')) && current?.accountId === saved.accountId && current?.secret === saved.secret;
+    if (!await supported()) throw Error('El servidor todavía no ofrece recuperación de cuentas.');
+    await withReplacement(async () => {
+      if (!resume && (await hasPersonalData() || (await store.get('identity'))?.registered)) throw Error('Este móvil ya tiene datos o una cuenta. Recupera tu cuenta en un dispositivo vacío para conservarlos.');
+      if (!resume) await recoverIdentity({ accountId: saved.accountId, secret: await proof(saved.secret) }, saved);
+      await syncCloud();
+      if (await store.get('cloud-restore-pending')) throw Error(state.error || 'La restauración está pendiente. Vuelve a intentarlo.');
+    });
+    await saveRecoveryAcknowledgement(code.trim());
+    announceRecoveredIdentity();
+    return { ...snapshot().state, backupRevision: state.restoredRevision ?? state.revision, warning: state.warning };
+  });
 }
 async function finishRotation(rotation) {
   const packet=rotation.packet;
@@ -307,12 +413,12 @@ async function finishRotation(rotation) {
   patch({recoverySaved:false,revision:result.revision});
   return rotation.next.code;
 }
-export async function rotateRecovery() {
-  await synchronizeCloud();
-  if(running) await running;
+export function rotateRecovery() {
+  return coordinate(async () => {
+  await syncCloud();
   if(!await supported() || capabilities.accountSecurity!==1) throw Error('El servidor todavía no admite esta operación.');
   if(state.status!=='ready') throw Error('Espera a que tu copia esté guardada en la nube antes de renovar el código.');
-  running=(async()=>{
+  const rotate = async()=>{
     const account=await accountKey(snapshot());
     if((account.previousSecrets||[]).length>=512) throw Error('Este historial de claves necesita una migración antes de renovarse.');
     const next={accountId:account.accountId,secret:hex(crypto.getRandomValues(new Uint8Array(32))),previousSecrets:[account.secret,...account.previousSecrets||[]]};
@@ -327,48 +433,48 @@ export async function rotateRecovery() {
     await store.set('cloud-pending-rotation',rotation);
     patch({status:'syncing',error:''});
     return finishRotation(rotation);
-  })().finally(()=>{running=null;});
-  try { const code=await running; await synchronizeCloud(); return code; }
+  };
+  try { const code=await rotate(); await syncCloud(); return code; }
   catch(error) { patch({status:'error',error:'Renovación pendiente: '+error.message}); throw error; }
+  });
 }
-export async function resolveCloudConflict(keepLocal) {
-  await running;
-  const account = await accountKey(snapshot()), head = await api('/backup/head');
-  if (keepLocal) {
-    await store.remove('cloud-pending-snapshot'); await store.set('cloud-version', head.revision); await markCloudDirty();
-  } else {
-    // Preserve the unsent local copy before explicitly restoring a remote version.
-    const local = await readDatabase(), locals = {};
-    for (const key of Object.keys(localStorage).filter(localKey)) locals[key] = localStorage.getItem(key);
-    await store.set('cloud-before-restore', { collections: local, locals, at: Date.now() });
-    const content = await downloadSnapshot(account, head);
-    await applySnapshot(content); await store.set('cloud-version', head.revision);
-    await store.remove('cloud-pending-snapshot'); await store.remove('cloud-dirty');
-    window.dispatchEvent(new Event('hashchange'));
-  }
-  await synchronizeCloud();
+export function resolveCloudConflict(keepLocal) {
+  return coordinate(async () => {
+    await resumeJournal();
+    await withReplacement(async () => {
+      const account = await accountKey(snapshot()), head = await api('/backup/head');
+      const remote = await downloadSnapshot(account, head), local = await localCopy();
+      // Keep both sides durably before changing the base revision or pending packet.
+      await store.setAll({ 'cloud-before-restore': local,
+        ['cloud-conflict:' + crypto.randomUUID()]: { local, remote, revision: head.revision, at: Date.now() } });
+      if (keepLocal) await store.commitCloud({ version: head.revision, markDirty: true });
+      else await replaceSnapshot(remote, head.revision);
+    });
+    await syncCloud();
+  });
 }
-export async function restorePreviousLocal() {
-  await running;
-  const saved = await store.get('cloud-before-restore');
-  if (!saved) throw Error('No hay una copia local anterior.');
-  const current = { collections: await readDatabase(), locals: {}, at: Date.now() };
-  for (const key of Object.keys(localStorage).filter(localKey)) current.locals[key] = localStorage.getItem(key);
-  await store.set('cloud-before-restore', current);
-  await applySnapshot(saved); await store.remove('cloud-pending-snapshot'); await markCloudDirty();
-  window.dispatchEvent(new Event('hashchange'));
+export function restorePreviousLocal() {
+  return coordinate(async () => {
+    await resumeJournal();
+    await withReplacement(async () => {
+      const saved = await store.get('cloud-before-restore');
+      if (!saved) throw Error('No hay una copia local anterior.');
+      await store.set('cloud-before-restore', await localCopy());
+      await replaceSnapshot(saved, await store.get('cloud-version') || 0, true);
+    });
+  });
 }
 export async function cloudHistory() { return (await api('/backup/history')).versions; }
-export async function restoreCloudVersion(revision) {
-  await running;
-  const account = await accountKey(snapshot()), history = await cloudHistory();
-  const selected = history.find(item => item.revision === revision);
-  if (!selected) throw Error('Esta versión ya no está disponible.');
-  const content = await downloadSnapshot(account, selected), head = await api('/backup/head');
-  const previous = { collections: await readDatabase(), locals: {}, at: Date.now() };
-  for (const key of Object.keys(localStorage).filter(localKey)) previous.locals[key] = localStorage.getItem(key);
-  await store.set('cloud-before-restore', previous);
-  await applySnapshot(content); await store.set('cloud-version', head.revision);
-  await store.remove('cloud-pending-snapshot'); await markCloudDirty();
-  window.dispatchEvent(new Event('hashchange'));
+export function restoreCloudVersion(revision) {
+  return coordinate(async () => {
+    await resumeJournal();
+    await withReplacement(async () => {
+      const account = await accountKey(snapshot()), history = await cloudHistory();
+      const selected = history.find(item => item.revision === revision);
+      if (!selected) throw Error('Esta versión ya no está disponible.');
+      const content = await downloadSnapshot(account, selected), head = await api('/backup/head');
+      await store.set('cloud-before-restore', await localCopy());
+      await replaceSnapshot(content, head.revision, true);
+    });
+  });
 }

@@ -1,4 +1,4 @@
-import { recoverAccount } from './cloud-v2.js';
+import { recoverAccount, subscribeCloud } from './cloud-v2.js';
 
 export function openRecovery(onSuccess = () => location.reload()) {
   const dialog = document.createElement('dialog'); dialog.className = 'fui-profile-dialog';
@@ -9,9 +9,20 @@ export function openRecovery(onSuccess = () => location.reload()) {
   dialog.querySelector('form').addEventListener('submit', async event => {
     event.preventDefault(); const form = event.currentTarget, button = form.querySelector('[type="submit"]');
     button.disabled = true; button.textContent = 'Recuperando…';
-    try { await recoverAccount(form.elements.code.value); dialog.close(); onSuccess(); }
+    const unsubscribe = subscribeCloud(info => {
+      button.textContent = info.status === 'restoring' ? 'Restaurando datos y sesión…' : 'Conectando y comprobando copia…';
+    });
+    try {
+      const result = await recoverAccount(form.elements.code.value);
+      if (!result.backupRevision) {
+        form.querySelector('[role="alert"]').textContent = 'Cuenta recuperada. No había ninguna copia de datos en la nube.';
+        button.type = 'button'; button.textContent = 'Entrar en mi cuenta'; button.onclick = () => { dialog.close(); onSuccess(); };
+        return;
+      }
+      dialog.close(); onSuccess();
+    }
     catch (error) { form.querySelector('[role="alert"]').textContent = error.message; }
-    finally { button.disabled = false; button.textContent = 'Recuperar cuenta y datos'; }
+    finally { unsubscribe(); button.disabled = false; if (button.type !== 'button') button.textContent = 'Recuperar cuenta y datos'; }
   });
 }
 export function attachRecovery(gate, onSuccess) {

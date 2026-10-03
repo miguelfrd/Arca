@@ -24,6 +24,22 @@ async function transact(name, mode, operation) {
   });
 }
 export const socialStore = {
+  async commitCloud({ version, dirtyRevision, restore = false, markDirty = false }) {
+    const connection = await database();
+    return new Promise((resolve, reject) => {
+      const tx = connection.transaction('meta', 'readwrite'), object = tx.objectStore('meta');
+      object.put({ key: 'cloud-version', value: version });
+      object.delete('cloud-pending-snapshot');
+      if (markDirty) object.put({ key: 'cloud-dirty', value: { revision: crypto.randomUUID(), at: Date.now() } });
+      else {
+        const read = object.get('cloud-dirty');
+        read.onsuccess = () => { if (dirtyRevision && read.result?.value?.revision === dirtyRevision) object.delete('cloud-dirty'); };
+      }
+      if (restore) { object.delete('cloud-restore-journal'); object.delete('cloud-restore-pending'); }
+      tx.oncomplete = resolve;
+      tx.onerror = tx.onabort = () => reject(tx.error || Error('No se pudo confirmar la copia.'));
+    });
+  },
   async setAll(values) {
     const connection = await database();
     return new Promise((resolve, reject) => {
