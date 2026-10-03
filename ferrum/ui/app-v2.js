@@ -7,6 +7,7 @@ import { renderDataStatus, stopDataStatus } from './data-status-v2.js';
 import { initializeCloud } from './cloud-v2.js';
 
 let installed = false;
+let installation;
 export function enhanceWorkout(view) {
   for (const card of view.querySelectorAll('.ex-card')) {
     const tools = card.querySelector('.ex-top .ex-tools');
@@ -28,20 +29,15 @@ export function updateFriendsBadge() {
   link.setAttribute('aria-label', count ? `Amigos, ${count} solicitudes pendientes` : 'Amigos');
   const label = link.querySelector('.fui-nav-label'); if (label) label.textContent = 'Amigos';
 }
-export async function afterRoute(view, path) {
+export async function afterRoute(view, path, isCurrent = () => true) {
   if (!installed) {
-    installed = true; installInteractionMotion();
-    await initialize(db, { workoutVolume, workoutSets });
-    await initializeCloud(db);
-    subscribe(updateFriendsBadge);
-    new MutationObserver(() => {
-      if (location.hash.startsWith('#/train/active')) enhanceWorkout(view);
-      else if ((location.hash || '#/train').split('?')[0] === '#/train')
-        enhanceHome(view).catch(() => {});
-    })
-      .observe(view, { childList: true });
+    installation ||= install(view).catch(error => { installation = null; throw error; });
+    await installation;
   }
-  clearOwnPhotos();
+  if (!isCurrent()) return;
+  // La reconciliación puede haber empezado desde el observer de Entrenar.
+  // Invalidarla aquí dejaba el feed vacío al refrescar la misma pantalla.
+  if (path !== '/train') clearOwnPhotos();
   if (path !== '/yo') stopDataStatus();
   const info = snapshot();
   let pendingInvite = false;
@@ -55,5 +51,18 @@ export async function afterRoute(view, path) {
   if (path === '/train') await enhanceHome(view);
   if (path === '/train/active') enhanceWorkout(view);
   if (path === '/yo') await renderDataStatus(view);
-  updateFriendsBadge();
+  if (isCurrent()) updateFriendsBadge();
+}
+async function install(view) {
+    await initialize(db, { workoutVolume, workoutSets });
+    await initializeCloud(db);
+    installInteractionMotion();
+    subscribe(updateFriendsBadge);
+    new MutationObserver(() => {
+      if (location.hash.startsWith('#/train/active')) enhanceWorkout(view);
+      else if ((location.hash || '#/train').split('?')[0] === '#/train')
+        enhanceHome(view).catch(() => {});
+    })
+      .observe(view, { childList: true });
+    installed = true;
 }

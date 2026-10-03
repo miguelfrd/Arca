@@ -11,8 +11,9 @@ function F() {
 
 // Los instaladores social/nube leen, escriben y definen propiedades sobre
 // la misma instancia. Un proxy con solo get perdía las escrituras de hooks.
-export { db } from '../../db';
+export const db = F().db;
 
+export const renderTrainHome = (...args) => F().renderTrainHome(...args);
 export const go = (...args) => F().go(...args);
 export const toast = (...args) => F().toast(...args);
 export const confirmDlg = (...args) => F().confirmDlg(...args);
@@ -21,11 +22,5 @@ export const getActive = (...args) => F().getActive(...args);
 export const setActive = (...args) => F().setActive(...args);
 export const workoutVolume = (...args) => F().workoutVolume(...args);
 export const workoutSets = (...args) => F().workoutSets(...args);
-export const formatDuration = (totalSeconds) => {
-  const s = Math.max(0, Math.floor(totalSeconds || 0));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`;
-};
+export const formatDuration = (...args) => F().formatDuration(...args);
 export const refreshRoute = () => window.dispatchEvent(new Event('hashchange'));

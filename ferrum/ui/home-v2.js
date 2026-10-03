@@ -1,4 +1,4 @@
-import { db, toast, confirmDlg, workoutVolume, workoutSets } from './platform-v2.js';
+import { db, toast, confirmDlg, workoutVolume, workoutSets, renderTrainHome } from './platform-v2.js';
 import { postCard, showPhoto } from './feed-v2.js';
 import { serializeWorkout } from './social-v2.js';
 
@@ -7,6 +7,7 @@ export function clearOwnPhotos() { for (const url of ownPhotos) URL.revokeObject
 export async function enhanceHome(view) {
   const free = view.querySelector('[data-act="free"]');
   if (!free || view.querySelector('.fui-routine-hero')) return;
+  clearOwnPhotos();
   const ticket = ++pageNumber;
   const routineCards = [...view.querySelectorAll('[data-act^="routine:"]')].map(button => button.closest('.card'));
   const hero = document.createElement('section'); hero.className = 'fui-routine-hero';
@@ -43,7 +44,7 @@ export async function enhanceHome(view) {
     const photos = await Promise.all(records.map(workout => db.get('workoutPhotos', workout.id)));
     if (!current()) return;
     for (const url of ownPhotos) URL.revokeObjectURL(url); ownPhotos = [];
-    const posts = records.map((workout, index) => ({ ...serializeWorkout(workout, map, { workoutVolume, workoutSets }),
+    const posts = records.map((workout, index) => ({ ...serializeWorkout(workout, map, { workoutVolume, workoutSets, renderTrainHome }),
       id: workout.id, author: { nickname: 'Tú' }, hasPhoto: Boolean(photos[index]?.blob) }));
     feed.querySelector('.fui-own-feed-list').innerHTML = posts.length ? posts.map(post => postCard(post, { own: true })).join('')
       : '<div class="empty fui-empty">Tu próximo entrenamiento empieza aquí.<br>Al terminar, verás su foto y tus sensaciones.</div>';
@@ -61,7 +62,6 @@ export async function enhanceHome(view) {
     const workout = await db.get('workouts', button.dataset.removeWorkout);
     if (!workout || !await confirmDlg(`¿Eliminar el entrenamiento «${workout.title}»? No se puede deshacer.`)) return;
     await db.del('workouts', workout.id); await db.del('workoutPhotos', workout.id);
-    const { renderTrainHome } = await import('../train');
     clearOwnPhotos(); await renderTrainHome(view); await enhanceHome(view);
   });
   await renderFeed();
