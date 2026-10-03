@@ -41,7 +41,7 @@ export async function afterRoute(view, path) {
     })
       .observe(view, { childList: true });
   }
-  clearOwnPhotos();
+  if (path !== '/train') clearOwnPhotos();
   if (path !== '/yo') stopDataStatus();
   const info = snapshot();
   let pendingInvite = false;

@@ -17,7 +17,7 @@ async function showDevices() {
     const intro=document.createElement('p'); intro.textContent='Revocar impide volver a usar el servidor desde ese dispositivo. No borra datos que ya tenga guardados.';body.append(intro);
     for(const device of devices) {
       const row=document.createElement('div'); row.className='fui-device-row';
-      const label=document.createElement('strong');label.textContent=device.label+(device.current?' · Este dispositivo':'');
+      const label=document.createElement('strong');label.textContent=(device.label || 'Dispositivo sin nombre')+(device.current?' · Este dispositivo':'');
       const detail=document.createElement('p');detail.className='small muted';
       detail.textContent=device.revokedAt?'Acceso revocado':device.expiresAt<Date.now()?'Acceso caducado':device.lastSeen?'Última actividad: '+new Date(device.lastSeen).toLocaleString('es-ES'):'Sin actividad reciente';
       row.append(label,detail);

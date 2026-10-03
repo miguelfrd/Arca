@@ -79,7 +79,7 @@ async function supported() {
   if (!capabilities || Date.now() - capabilityAt > 60000) {
     capabilityAt = Date.now();
     try { capabilities = await api('/capabilities', { anonymous: true }); }
-    catch { capabilities = {}; }
+    catch (error) { capabilities = null; throw error; }
   }
   return capabilities.privateBackup === 1;
 }
@@ -201,9 +201,9 @@ export function synchronizeCloud() {
     const info = snapshot();
     if (!info.identity?.registered || !info.state || info.onboarding) return;
     if (navigator.onLine === false) { patch({ status: 'offline', pending: Boolean(await store.get('cloud-dirty')) }); return; }
-    if (!await supported()) { patch({ status: 'unavailable', error: '' }); return; }
     patch({ status: 'syncing', error: '' });
     try {
+      if (!await supported()) { patch({ status: 'unavailable', error: '' }); return; }
       const rotation=await store.get('cloud-pending-rotation');
       if(rotation) await finishRotation(rotation);
       const account = await accountKey(info);
@@ -248,7 +248,7 @@ export function synchronizeCloud() {
       patch({ status: pending ? 'pending' : 'ready', pending, revision: version, lastSync: at, error: '' });
       if (pending) { clearTimeout(timer); timer = setTimeout(() => synchronizeCloud(), 3500); }
     } catch (error) {
-      patch({ status: error.code === 'backup_conflict' ? 'conflict' : state.status === 'needs-code' ? 'needs-code' : 'error', error: error.message,
+      patch({ status: error.code === 'backup_conflict' ? 'conflict' : state.status === 'needs-code' ? 'needs-code' : error.status === 0 ? 'offline' : 'error', error: error.message,
         pending: Boolean(await store.get('cloud-dirty')) });
     }
   })().finally(() => { running = null; });

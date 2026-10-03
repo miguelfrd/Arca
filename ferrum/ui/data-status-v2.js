@@ -6,8 +6,8 @@ import { cloudSnapshot, subscribeCloud, synchronizeCloud, recoveryCode, markReco
 let cleanup;
 export function stopDataStatus() { cleanup?.(); cleanup = null; }
 export async function renderDataStatus(view) {
-  stopDataStatus();
   if (view.querySelector('.fui-data-status')) return;
+  stopDataStatus();
   const [workouts, routines, photos, previous] = await Promise.all([
     db.all('workouts'), db.all('routines'), db.all('workoutPhotos'), socialStore.get('cloud-before-restore')
   ]);
