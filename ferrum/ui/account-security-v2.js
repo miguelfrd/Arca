@@ -1,5 +1,5 @@
 import { api, snapshot } from './social-v2.js';
-import { cloudSnapshot, rotateRecovery, recoveryCode, markRecoverySaved, reconnectKey } from './cloud-v2.js';
+import { rotateRecovery, recoveryCode, markRecoverySaved, reconnectKey } from './cloud-v2.js';
 import { toast } from './platform-v2.js';
 
 function dialog(title) {
@@ -9,36 +9,6 @@ function dialog(title) {
   node.querySelector('[data-close]').onclick=()=>node.close();
   node.addEventListener('close',()=>node.remove(),{once:true}); document.body.append(node); node.showModal(); return node;
 }
-const offeredCodes = new Set();
-let activeOffer;
-export async function offerRecoveryCode() {
-  const code = await recoveryCode();
-  if (!code) return;
-  if (activeOffer?.code === code && activeOffer.node.isConnected) return;
-  const node = dialog('Guarda tu código de recuperación'), body = node.querySelector('[data-content]');
-  activeOffer = { code, node };
-  body.innerHTML = '<p>Este código permite recuperar tu cuenta y descifrar tus copias. Guárdalo fuera de este móvil, por ejemplo en tu gestor de contraseñas.</p><textarea readonly rows="5" aria-label="Código de recuperación" spellcheck="false"></textarea><button class="btn" data-copy>Copiar código</button><label><input type="checkbox" data-saved> He guardado este código fuera de este móvil y puedo acceder a él si lo pierdo.</label><button class="btn secondary" data-confirm disabled>Confirmar conservación externa</button>';
-  body.querySelector('textarea').value = code;
-  body.querySelector('[data-copy]').onclick = async () => {
-    try { await navigator.clipboard.writeText(code); toast('Código copiado. Guárdalo fuera de este móvil y confirma después.'); }
-    catch { body.querySelector('textarea').select(); toast('Selecciona y copia el código'); }
-  };
-  const confirm = body.querySelector('[data-confirm]'); confirm.disabled = true;
-  body.querySelector('[data-saved]').onchange = event => { confirm.disabled = !event.currentTarget.checked; };
-  confirm.onclick = async () => {
-    try {
-      if (code !== await recoveryCode()) throw Error('El código ha cambiado. Guarda el código actual.');
-      await markRecoverySaved(code); node.close(); toast('Recuperación preparada');
-    } catch (error) { node.querySelector('[role=alert]').textContent = error.message; }
-  };
-}
-window.addEventListener('ferrum:recovery-available', async () => {
-  if (cloudSnapshot().recoverySaved) return;
-  const code = await recoveryCode();
-  if (!code || offeredCodes.has(code)) return;
-  offeredCodes.add(code);
-  await offerRecoveryCode();
-});
 async function showDevices() {
   const node=dialog('Dispositivos conectados'),body=node.querySelector('[data-content]');
   const paint=async()=>{
@@ -47,7 +17,7 @@ async function showDevices() {
     const intro=document.createElement('p'); intro.textContent='Revocar impide volver a usar el servidor desde ese dispositivo. No borra datos que ya tenga guardados.';body.append(intro);
     for(const device of devices) {
       const row=document.createElement('div'); row.className='fui-device-row';
-      const label=document.createElement('strong');label.textContent=(device.label || 'Dispositivo sin nombre')+(device.current?' · Este dispositivo':'');
+      const label=document.createElement('strong');label.textContent=device.label+(device.current?' · Este dispositivo':'');
       const detail=document.createElement('p');detail.className='small muted';
       detail.textContent=device.revokedAt?'Acceso revocado':device.expiresAt<Date.now()?'Acceso caducado':device.lastSeen?'Última actividad: '+new Date(device.lastSeen).toLocaleString('es-ES'):'Sin actividad reciente';
       row.append(label,detail);
@@ -78,7 +48,12 @@ export function renderAccountSecurity(card) {
     body.querySelector('[data-confirm]').onclick=async event=>{
       event.currentTarget.disabled=true;node.querySelector('[role=alert]').textContent='Preparando y guardando la nueva copia…';
       try{
-        await rotateRecovery(); node.close(); await offerRecoveryCode();
+        await rotateRecovery();const code=await recoveryCode();body.replaceChildren();
+        const text=document.createElement('p');text.textContent='Código renovado. Este es el único código válido para recuperar tu cuenta. Guárdalo fuera de Ferrum.';
+        const input=document.createElement('textarea');input.readOnly=true;input.rows=5;input.value=code;input.setAttribute('aria-label','Nuevo código de recuperación');
+        const copy=document.createElement('button');copy.className='btn';copy.textContent='Copiar código nuevo';
+        copy.onclick=async()=>{try{await navigator.clipboard.writeText(code);await markRecoverySaved();toast('Código copiado. Guárdalo fuera de Ferrum.');}catch{input.select();toast('Selecciona y copia el código');}};
+        body.append(text,input,copy);node.querySelector('[role=alert]').textContent='';
       }catch(e){node.querySelector('[role=alert]').textContent=e.message;const button=body.querySelector('[data-confirm]');if(button)button.disabled=false;}
     };
   };

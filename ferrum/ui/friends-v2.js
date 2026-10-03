@@ -30,13 +30,9 @@ function popup(title, contents) {
 }
 async function inviteDialog() {
   const result = await action('/invites', {});
-  if (!validInvite(result.invite)) throw new Error('El servidor no devolvió una invitación válida. Vuelve a intentarlo.');
   const url = location.origin + location.pathname + '#/friends?invite=' + result.invite;
   const dialog = popup('Entrenad juntos', `<p class="muted">Comparte este enlace. Tu amigo elige su nombre y a quién quiere enviar solicitudes.</p><label class="f" for="fui-invite-url">Tu invitación</label><input id="fui-invite-url" type="text" readonly/><div class="fui-dialog-actions"><button class="btn" data-copy-invite>Copiar enlace</button>${navigator.share ? '<button class="btn secondary" data-share-invite>Compartir</button>' : ''}</div><p class="small muted">El enlace incluye el código de invitación.</p>`);
   const input = dialog.querySelector('input'); input.value = url;
-  const expires = new Date(result.expiresAt);
-  dialog.querySelector('.small.muted').textContent = 'Invitación de un solo uso.' +
-    (result.expiresAt && Number.isFinite(expires.getTime()) ? ' Caduca el ' + expires.toLocaleString('es-ES') + '.' : ' Su validez se comprueba al abrir el enlace.');
   dialog.querySelector('[data-copy-invite]').addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(url); toast('Invitación copiada'); }
     catch { input.focus(); input.select(); toast('Selecciona y copia el enlace'); }
@@ -88,7 +84,7 @@ export async function renderFriends(view, params = new URLSearchParams()) {
     if (mode === 'join') {
       if (body.querySelector('#fui-join')) return;
       if (!validInvite(invite) || !invitationReady) {
-        body.innerHTML = `<div class="card fui-social-welcome">${peopleIcon}<h2>Entra por invitación.</h2><p>${invitationError ? esc(invitationError) : 'Pide a Miguel un enlace con tu código único para crear tu cuenta.'}</p><p class="muted small">Si ya tenías una cuenta y has cambiado de móvil, usa tu código de recuperación. Crear otra cuenta no recupera tu historial.</p>${validInvite(invite) ? '<button class="btn secondary" data-retry-invite>Comprobar de nuevo</button>' : ''}</div>`;
+        body.innerHTML = `<div class="card fui-social-welcome">${peopleIcon}<h2>Entra por invitación.</h2><p>${invitationError ? esc(invitationError) : 'Pide a Miguel un enlace con tu código único para crear tu cuenta.'}</p><p class="muted small">Si ya tenías una cuenta y has cambiado de móvil, espera a disponer de recuperación de cuenta. Crear otra cuenta no recupera tu historial.</p>${validInvite(invite) ? '<button class="btn secondary" data-retry-invite>Comprobar de nuevo</button>' : ''}</div>`;
         body.querySelector('[data-retry-invite]')?.addEventListener('click', async event => {
           event.currentTarget.disabled = true;
           await checkInvitation(); paint(snapshot());

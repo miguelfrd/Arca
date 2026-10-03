@@ -14,15 +14,9 @@ function F() {
 export const db = new Proxy(
   {},
   {
-    get(target, prop) {
-      // Los indicadores definidos sobre el proxy también deben poder leerse.
-      if (Object.hasOwn(target, prop)) return Reflect.get(target, prop);
+    get(_t, prop) {
       const v = F().db[prop];
       return typeof v === 'function' ? v.bind(F().db) : v;
-    },
-    set(_t, prop, value) {
-      // Social y cloud envuelven estos métodos; el bundle debe usar los hooks.
-      return Reflect.set(F().db, prop, value);
     },
   },
 );

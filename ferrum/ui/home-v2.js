@@ -1,4 +1,4 @@
-import { db, toast, confirmDlg, workoutVolume, workoutSets, refreshRoute } from './platform-v2.js';
+import { db, toast, confirmDlg, workoutVolume, workoutSets } from './platform-v2.js';
 import { postCard, showPhoto } from './feed-v2.js';
 import { serializeWorkout } from './social-v2.js';
 
@@ -58,14 +58,11 @@ export async function enhanceHome(view) {
   historyButton.addEventListener('click', () => { full = !full; renderFeed().catch(() => toast('No se pudo cargar la actividad.')); });
   feed.addEventListener('click', async event => {
     const button = event.target.closest('[data-remove-workout]'); if (!button) return;
-    button.disabled = true;
-    try {
-      const workout = await db.get('workouts', button.dataset.removeWorkout);
-      if (!workout || !await confirmDlg(`¿Eliminar el entrenamiento «${workout.title}»? No se puede deshacer.`)) return;
-      await db.del('workouts', workout.id); await db.del('workoutPhotos', workout.id);
-      clearOwnPhotos(); refreshRoute();
-    } catch { toast('No se pudo eliminar el entrenamiento. Vuelve a intentarlo.'); }
-    finally { if (button.isConnected) button.disabled = false; }
+    const workout = await db.get('workouts', button.dataset.removeWorkout);
+    if (!workout || !await confirmDlg(`¿Eliminar el entrenamiento «${workout.title}»? No se puede deshacer.`)) return;
+    await db.del('workouts', workout.id); await db.del('workoutPhotos', workout.id);
+    const { renderTrainHome } = await import('../assets/train-CQPcLgo5.js');
+    clearOwnPhotos(); await renderTrainHome(view); await enhanceHome(view);
   });
   await renderFeed();
 }
