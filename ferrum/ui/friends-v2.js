@@ -207,9 +207,49 @@ export async function renderFriends(view, params = new URLSearchParams()) {
           const date = new Date(u.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
           const tag = u.is_owner ? '<span class="fui-friend-status">propietario</span>'
             : u.id === me ? '<span class="fui-friend-status">tú</span>'
-            : `<button class="icon-btn ghost" data-delete-account="${esc(u.id)}" data-nickname="${esc(u.nickname)}" aria-label="Eliminar cuenta de ${esc(u.nickname)}">×</button>`;
+            : `<button class="btn secondary small" data-token-account="${esc(u.id)}" data-nickname="${esc(u.nickname)}">Token</button>` +
+              `<button class="icon-btn ghost" data-delete-account="${esc(u.id)}" data-nickname="${esc(u.nickname)}" aria-label="Eliminar cuenta de ${esc(u.nickname)}">×</button>`;
           return `<div class="fui-person" data-person-row><span class="fui-avatar" aria-hidden="true">${esc(u.nickname.slice(0, 1).toUpperCase())}</span><div class="fui-person-copy"><strong>${esc(u.nickname)}</strong><small>desde ${esc(date)}</small></div><div class="fui-person-actions">${tag}</div></div>`;
         }).join('') : '<p class="muted small">No hay cuentas.</p>';
+        for (const tok of list.querySelectorAll('[data-token-account]')) {
+          tok.addEventListener('click', async () => {
+            const uid = tok.dataset.tokenAccount, nickname = tok.dataset.nickname;
+            tok.disabled = true;
+            try {
+              let data;
+              try { data = await adminApi('/tokens/' + encodeURIComponent(uid)); }
+              catch (e) {
+                if (e.status === 404) {
+                  const gen = await confirmDlg(`Generar token de acceso para ${nickname}?`, 'Con este código cualquiera podrá iniciar sesión en su cuenta. Solo tú podrás verlo.');
+                  if (!gen) { tok.disabled = false; return; }
+                  data = await adminApi('/tokens/' + encodeURIComponent(uid), { method: 'POST' });
+                } else throw e;
+              }
+              const dialog = popup('Token de acceso — ' + nickname,
+                `<p class="muted small">Comparte este código solo con ${esc(nickname)}. Con él podrá iniciar sesión en su cuenta desde cualquier móvil.</p>` +
+                `<label class="f" for="fui-token-value">Código</label>` +
+                `<input id="fui-token-value" type="text" readonly value="${esc(data.token)}" style="font-family: monospace; letter-spacing: 1px;" />` +
+                `<div class="fui-dialog-actions"><button class="btn secondary" data-copy-token>Copiar</button>` +
+                `<button class="btn secondary" data-regen-token>Regenerar</button></div>` +
+                `<p class="small muted">Regenerar invalida el código anterior.</p>`);
+              dialog.querySelector('[data-copy-token]').addEventListener('click', async () => {
+                try { await navigator.clipboard.writeText(data.token); toast('Código copiado.'); }
+                catch { dialog.querySelector('#fui-token-value').select(); }
+              });
+              dialog.querySelector('[data-regen-token]').addEventListener('click', async (ev) => {
+                const b = ev.currentTarget; b.disabled = true;
+                try {
+                  const fresh = await adminApi('/tokens/' + encodeURIComponent(uid), { method: 'POST' });
+                  data.token = fresh.token;
+                  dialog.querySelector('#fui-token-value').value = fresh.token;
+                  toast('Nuevo código generado.');
+                } catch (e2) { toast(e2.message); }
+                finally { b.disabled = false; }
+              });
+            } catch (error) { toast(error.message); }
+            finally { tok.disabled = false; }
+          });
+        }
         for (const del of list.querySelectorAll('[data-delete-account]')) {
           del.addEventListener('click', async () => {
             const nickname = del.dataset.nickname;
