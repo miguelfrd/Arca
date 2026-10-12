@@ -281,6 +281,28 @@ export async function action(path, body) {
   }
   return result;
 }
+const ADMIN_BASE = 'https://ferrum-social-admin.mifemc.workers.dev';
+/**
+ * Llamadas al Worker de administración (solo propietario).
+ * Reutiliza el mismo Bearer token que la API principal.
+ */
+export async function adminApi(path, options = {}) {
+  const owner = await ownIdentity();
+  const headers = new Headers(options.headers);
+  headers.set('Authorization', `Bearer ${owner.deviceId}.${owner.deviceSecret}`);
+  const response = await fetch(ADMIN_BASE + path, {
+    method: options.method || 'GET',
+    headers,
+    signal: options.signal,
+    credentials: 'omit',
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new SocialError(error.message || 'No se pudo completar.', response.status, error.code);
+  }
+  return response.json();
+}
 export async function reconnectIdentity(values, cloudKey) {
   if(values.accountId!==cachedState?.profile.id) throw new SocialError('Ese código pertenece a otra cuenta.',409);
   const owner=makeIdentity();

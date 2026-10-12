@@ -2,14 +2,14 @@
 // Estrategia: cache-first para todo lo del mismo origen; la app se cachea
 // en la primera visita y luego funciona sin conexión.
 
-const CACHE = 'ferrum-v60';
+const CACHE = 'ferrum-v61';
 
 self.addEventListener('install', (event) => {
   // 'reload' evita que la precarga coja una copia rancia del borde del CDN
   // a mitad de un deploy (fue la causa de la pantalla negra v6->v7).
   const fresh = (u) => new Request(new URL(u, self.registration.scope).href, { cache: 'reload' });
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html', './manifest.webmanifest', './social-config.json', './assets/backup-BqIdUMnb.js', './assets/changelog-DnN0lNlP.js', './assets/charts-D8nMVL7S.js', './assets/exercises-BxIzl3rV.js', './assets/exercises-Cci3ANBi.js', './assets/exercises-legacy-CjP5m5ez.js', './assets/index-BK47a5Ia.js', './assets/index-QQXgCtOR.css', './assets/measures-DBOK7vF8.js', './assets/more-CQyB40oi.js', './assets/muscle-load-BL7lTJEv.js', './assets/photo-B4nAdfpw.js', './assets/routines-DNWaPaOn.js', './assets/stats-CTfZ_y3J.js', './assets/train-ChsATbDZ.js', './assets/yo-D7qJW6qy.js', './ui/app-v2.js', './ui/data-status-v2.js', './ui/account-security-v2.js', './ui/cloud-v2.js', './ui/account-recovery-v2.js', './ui/feed-v2.js', './ui/ferrum-ui-v1.css', './ui/ferrum-ui-v1.js', './ui/ferrum-v2.css', './ui/friends-v2.js', './ui/home-v2.js', './ui/invite-v2.js', './ui/motion-v2.js', './ui/platform-v2.js', './ui/social-store-v2.js', './ui/social-v2.js'].map(fresh))).then(() => self.skipWaiting()),
+    caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html', './manifest.webmanifest', './social-config.json', __FERRUM_ASSETS__, './ui/app-v2.js', './ui/data-status-v2.js', './ui/account-security-v2.js', './ui/cloud-v2.js', './ui/account-recovery-v2.js', './ui/feed-v2.js', './ui/ferrum-ui-v1.css', './ui/ferrum-ui-v1.js', './ui/ferrum-v2.css', './ui/friends-v2.js', './ui/home-v2.js', './ui/invite-v2.js', './ui/motion-v2.js', './ui/platform-v2.js', './ui/social-store-v2.js', './ui/social-v2.js'].map(fresh))).then(() => self.skipWaiting()),
   );
 });
 

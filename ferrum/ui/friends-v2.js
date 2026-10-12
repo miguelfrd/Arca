@@ -1,5 +1,5 @@
 import { db, toast, confirmDlg, workoutVolume, workoutSets } from './platform-v2.js';
-import { initialize, snapshot, subscribe, synchronize, join, action, photoUrl, loadMore, previewInvitation, saveSelection, prepareSelection, completeOnboarding, bootstrapOwner } from './social-v2.js';
+import { initialize, snapshot, subscribe, synchronize, join, action, photoUrl, loadMore, previewInvitation, saveSelection, prepareSelection, completeOnboarding, bootstrapOwner, adminApi } from './social-v2.js';
 import { openRecovery } from './account-recovery-v2.js';
 import { takePendingInvite, clearPendingInvite, validInvite } from './invite-v2.js';
 import { postCard, escapeHtml as esc, showPhoto } from './feed-v2.js';
@@ -121,7 +121,7 @@ export async function renderFriends(view, params = new URLSearchParams()) {
     if (info.onboarding) { paintSelection(info); return; }
     const state = info.state, received = state.relationships.filter(link => link.state === 'pending' && link.incoming);
     if (!body.querySelector('.fui-social-panels')) {
-      body.innerHTML = `<div class="fui-circle-head"><button class="fui-profile-button" data-open-profile><span class="fui-avatar" aria-hidden="true"></span><span><strong></strong><small>Tu círculo privado</small></span></button><button class="btn secondary small" data-invite-friend>Invitar ＋</button></div><div class="fui-social-tabs" role="tablist" aria-label="Amigos"><button role="tab" id="fui-tab-feed" data-social-panel="feed" aria-controls="fui-panel-feed">Actividad</button><button role="tab" id="fui-tab-people" data-social-panel="people" aria-controls="fui-panel-people">Lista de personas</button></div><div class="fui-sync-row"><p class="fui-sync-status" role="status"></p><button class="icon-btn ghost" data-refresh-friends aria-label="Actualizar Amigos">↻</button></div><div class="fui-social-panels"><section id="fui-panel-feed" role="tabpanel" aria-labelledby="fui-tab-feed"><div class="fui-shared-feed"></div><button class="btn secondary" data-more-feed>Ver más actividad</button></section><section id="fui-panel-people" role="tabpanel" aria-labelledby="fui-tab-people"><div class="fui-incoming-list"></div><div class="fui-section-head"><h2>Lista de personas</h2><span class="fui-inline-badge" hidden></span></div><p class="small muted">Envía una solicitud. La otra persona decide si acepta.</p><label class="fui-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar en tu círculo" aria-label="Buscar personas"/></label><div class="fui-people-list"></div></section></div>`;
+      body.innerHTML = `<div class="fui-circle-head"><button class="fui-profile-button" data-open-profile><span class="fui-avatar" aria-hidden="true"></span><span><strong></strong><small>Tu círculo privado</small></span></button><button class="btn secondary small" data-invite-friend>Invitar ＋</button></div><div class="fui-social-tabs" role="tablist" aria-label="Amigos"><button role="tab" id="fui-tab-feed" data-social-panel="feed" aria-controls="fui-panel-feed">Actividad</button><button role="tab" id="fui-tab-people" data-social-panel="people" aria-controls="fui-panel-people">Lista de personas</button></div><div class="fui-sync-row"><p class="fui-sync-status" role="status"></p><button class="icon-btn ghost" data-refresh-friends aria-label="Actualizar Amigos">↻</button></div><div class="fui-social-panels"><section id="fui-panel-feed" role="tabpanel" aria-labelledby="fui-tab-feed"><div class="fui-shared-feed"></div><button class="btn secondary" data-more-feed>Ver más actividad</button></section><section id="fui-panel-people" role="tabpanel" aria-labelledby="fui-tab-people"><div class="fui-incoming-list"></div><div class="fui-section-head"><h2>Lista de personas</h2><span class="fui-inline-badge" hidden></span></div><p class="small muted">Envía una solicitud. La otra persona decide si acepta.</p><label class="fui-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar en tu círculo" aria-label="Buscar personas"/></label><div class="fui-people-list"></div><div class="fui-admin-section"></div></section></div>`;
       body.querySelector('[data-open-profile]').addEventListener('click', profileDialog);
       body.querySelector('[data-invite-friend]').addEventListener('click', async event => {
         const button = event.currentTarget; button.disabled = true;
@@ -176,8 +176,61 @@ export async function renderFriends(view, params = new URLSearchParams()) {
       body.querySelector('.fui-incoming-list').innerHTML = received.length ? '<div class="fui-section-head"><h2>Solicitudes pendientes</h2></div>' + received.map(link => personRow(link.person, link, 'incoming')).join('') : '';
 
       filterPeople();
+      renderAdminSection();
     }
     selectPanel();
+  }
+  /**
+   * Sección de administración: solo visible para el propietario.
+   * Permite ver todas las cuentas y eliminarlas directamente.
+   */
+  async function renderAdminSection() {
+    const slot = body.querySelector('.fui-admin-section');
+    if (!slot) return;
+    const state = snapshot();
+    const isOwner = state?.profile?.role === 'admin' || state?.profile?.is_owner === true;
+    if (!isOwner) { slot.innerHTML = ''; return; }
+    if (slot.dataset.ready) return;
+    slot.dataset.ready = '1';
+    slot.innerHTML = `<div class="fui-section-head"><h2>Administrar cuentas</h2></div>
+      <p class="small muted">Solo tú ves esto. Eliminar una cuenta borra su perfil, amistades, actividad y copia en la nube. No se puede deshacer.</p>
+      <button class="btn secondary small" data-load-accounts>Ver cuentas</button>
+      <div class="fui-admin-list"></div>`;
+    slot.querySelector('[data-load-accounts]').addEventListener('click', async (event) => {
+      const button = event.currentTarget;
+      const list = slot.querySelector('.fui-admin-list');
+      button.disabled = true;
+      try {
+        const { users } = await adminApi('/users');
+        const me = state.profile.id;
+        list.innerHTML = users.length ? users.map(u => {
+          const date = new Date(u.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+          const tag = u.is_owner ? '<span class="fui-friend-status">propietario</span>'
+            : u.id === me ? '<span class="fui-friend-status">tú</span>'
+            : `<button class="icon-btn ghost" data-delete-account="${esc(u.id)}" data-nickname="${esc(u.nickname)}" aria-label="Eliminar cuenta de ${esc(u.nickname)}">×</button>`;
+          return `<div class="fui-person" data-person-row><span class="fui-avatar" aria-hidden="true">${esc(u.nickname.slice(0, 1).toUpperCase())}</span><div class="fui-person-copy"><strong>${esc(u.nickname)}</strong><small>desde ${esc(date)}</small></div><div class="fui-person-actions">${tag}</div></div>`;
+        }).join('') : '<p class="muted small">No hay cuentas.</p>';
+        for (const del of list.querySelectorAll('[data-delete-account]')) {
+          del.addEventListener('click', async () => {
+            const nickname = del.dataset.nickname;
+            const ok = await confirmDlg(`Eliminar la cuenta de ${nickname}?`, 'Se borrará su perfil, sus amistades, su actividad compartida y su copia en la nube. Esta acción no se puede deshacer.');
+            if (!ok) return;
+            del.disabled = true;
+            try {
+              await adminApi('/users/' + encodeURIComponent(del.dataset.deleteAccount), { method: 'DELETE' });
+              toast(`Cuenta de ${nickname} eliminada.`);
+              button.disabled = false;
+              slot.dataset.ready = '';
+              renderAdminSection();
+              button.click();
+            } catch (error) { toast(error.message); del.disabled = false; }
+          });
+        }
+      } catch (error) {
+        list.innerHTML = `<p class="fui-form-error" role="alert">${esc(error.message)}</p>`;
+        button.disabled = false;
+      }
+    });
   }
   function filterPeople() {
     const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-ES');
