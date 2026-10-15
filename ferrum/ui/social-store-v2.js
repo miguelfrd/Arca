@@ -35,6 +35,17 @@ export const socialStore = {
   async get(key) { return (await transact('meta', 'readonly', store => store.get(key)))?.value; },
   set: (key, value) => transact('meta', 'readwrite', store => store.put({ key, value })),
   remove: key => transact('meta', 'readwrite', store => store.delete(key)),
+  // Borra SOLO los datos de Amigos (identidad, estado, cola). Los entrenos
+  // locales viven en otra base de datos y no se tocan.
+  async clearAll() {
+    const connection = await database();
+    return new Promise((resolve, reject) => {
+      const tx = connection.transaction(['meta', 'outbox'], 'readwrite');
+      tx.objectStore('meta').clear();
+      tx.objectStore('outbox').clear();
+      tx.oncomplete = resolve; tx.onerror = tx.onabort = () => reject(tx.error);
+    });
+  },
   async removeMatchingRevision(key, revision) {
     const connection = await database();
     return new Promise((resolve, reject) => {

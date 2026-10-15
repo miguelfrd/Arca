@@ -1,5 +1,5 @@
 import { db, toast, confirmDlg, workoutVolume, workoutSets } from './platform-v2.js';
-import { initialize, snapshot, subscribe, synchronize, join, action, photoUrl, loadMore, previewInvitation, saveSelection, prepareSelection, completeOnboarding, bootstrapOwner, adminApi } from './social-v2.js';
+import { initialize, snapshot, subscribe, synchronize, join, action, photoUrl, loadMore, previewInvitation, saveSelection, prepareSelection, completeOnboarding, bootstrapOwner, adminApi, resetAccount } from './social-v2.js';
 import { openRecovery } from './account-recovery-v2.js';
 import { takePendingInvite, clearPendingInvite, validInvite } from './invite-v2.js';
 import { postCard, escapeHtml as esc, showPhoto } from './feed-v2.js';
@@ -44,7 +44,7 @@ async function inviteDialog() {
 }
 function profileDialog() {
   const state = snapshot().state;
-  const dialog = popup('Tu perfil', `<form><label class="f" for="fui-profile-name">Tu nombre</label><input id="fui-profile-name" name="nickname" type="text" required minlength="2" maxlength="40" autocomplete="nickname"/><label class="fui-consent"><input type="checkbox" name="sharing"/><span>Compartir entrenamientos y fotos con mis amigos aceptados</span></label><p class="small muted">Al pausarlo, tu actividad deja de aparecer a tus amigos. Pausarlo no borra tus entrenamientos ni modifica tu copia privada.</p><p class="fui-form-error" role="alert"></p><button class="btn" type="submit">Guardar cambios</button></form>`);
+  const dialog = popup('Tu perfil', `<form><label class="f" for="fui-profile-name">Tu nombre</label><input id="fui-profile-name" name="nickname" type="text" required minlength="2" maxlength="40" autocomplete="nickname"/><label class="fui-consent"><input type="checkbox" name="sharing"/><span>Compartir entrenamientos y fotos con mis amigos aceptados</span></label><p class="small muted">Al pausarlo, tu actividad deja de aparecer a tus amigos. Pausarlo no borra tus entrenamientos ni modifica tu copia privada.</p><p class="fui-form-error" role="alert"></p><button class="btn" type="submit">Guardar cambios</button></form><hr class="fui-dialog-separator"/><p class="small muted">Si tu cuenta ya no existe en el servidor o quieres empezar de cero en este móvil, reiníciala. Tus entrenos locales no se tocan.</p><button class="btn secondary" type="button" data-reset-account>Reiniciar cuenta</button>`);
   const form = dialog.querySelector('form'); form.elements.nickname.value = state.profile.nickname;
   form.elements.sharing.checked = state.profile.sharing;
   form.addEventListener('submit', async event => {
@@ -53,6 +53,17 @@ function profileDialog() {
     catch (error) { form.querySelector('[role="alert"]').textContent = error.message; }
     finally { button.disabled = false; }
   });
+  dialog.querySelector('[data-reset-account]').addEventListener('click', async event => {
+    event.currentTarget.disabled = true;
+    if (await handleResetAccount()) dialog.close();
+    else event.currentTarget.disabled = false;
+  });
+}
+async function handleResetAccount() {
+  const ok = await confirmDlg('¿Reiniciar tu cuenta de Amigos?', 'Se borrará tu perfil de Amigos de este móvil: identidad, amistades y actividad compartida. Tus entrenos locales NO se tocan. Después podrás volver a entrar con una invitación.');
+  if (!ok) return false;
+  try { await resetAccount(); toast('Cuenta reiniciada. Puedes volver a entrar con una invitación.'); return true; }
+  catch (error) { toast(error.message); return false; }
 }
 export async function renderFriends(view, params = new URLSearchParams()) {
   stopFriendView();
@@ -71,6 +82,10 @@ export async function renderFriends(view, params = new URLSearchParams()) {
     else if (info.error) status.textContent = info.error;
     else status.textContent = info.lastSync ? 'Actividad actualizada ' + new Date(info.lastSync).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : 'Listo para compartir';
     status.classList.toggle('has-error', Boolean(info.error));
+    // Solo si el servidor rechaza la cuenta (401) tiene sentido reiniciarla:
+    // un fallo de red no es motivo para borrar el perfil local.
+    const reset = body.querySelector('.fui-sync-row [data-reset-account]');
+    if (reset) reset.hidden = info.errorStatus !== 401;
   }
   function paint(info) {
     if (!alive || !view.isConnected) return;
@@ -121,13 +136,18 @@ export async function renderFriends(view, params = new URLSearchParams()) {
     if (info.onboarding) { paintSelection(info); return; }
     const state = info.state, received = state.relationships.filter(link => link.state === 'pending' && link.incoming);
     if (!body.querySelector('.fui-social-panels')) {
-      body.innerHTML = `<div class="fui-circle-head"><button class="fui-profile-button" data-open-profile><span class="fui-avatar" aria-hidden="true"></span><span><strong></strong><small>Tu círculo privado</small></span></button><button class="btn secondary small" data-invite-friend>Invitar ＋</button></div><div class="fui-social-tabs" role="tablist" aria-label="Amigos"><button role="tab" id="fui-tab-feed" data-social-panel="feed" aria-controls="fui-panel-feed">Actividad</button><button role="tab" id="fui-tab-people" data-social-panel="people" aria-controls="fui-panel-people">Lista de personas</button></div><div class="fui-sync-row"><p class="fui-sync-status" role="status"></p><button class="icon-btn ghost" data-refresh-friends aria-label="Actualizar Amigos">↻</button></div><div class="fui-social-panels"><section id="fui-panel-feed" role="tabpanel" aria-labelledby="fui-tab-feed"><div class="fui-shared-feed"></div><button class="btn secondary" data-more-feed>Ver más actividad</button></section><section id="fui-panel-people" role="tabpanel" aria-labelledby="fui-tab-people"><div class="fui-incoming-list"></div><div class="fui-section-head"><h2>Lista de personas</h2><span class="fui-inline-badge" hidden></span></div><p class="small muted">Envía una solicitud. La otra persona decide si acepta.</p><label class="fui-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar en tu círculo" aria-label="Buscar personas"/></label><div class="fui-people-list"></div><div class="fui-admin-section"></div></section></div>`;
+      body.innerHTML = `<div class="fui-circle-head"><button class="fui-profile-button" data-open-profile><span class="fui-avatar" aria-hidden="true"></span><span><strong></strong><small>Tu círculo privado</small></span></button><button class="btn secondary small" data-invite-friend>Invitar ＋</button></div><div class="fui-social-tabs" role="tablist" aria-label="Amigos"><button role="tab" id="fui-tab-feed" data-social-panel="feed" aria-controls="fui-panel-feed">Actividad</button><button role="tab" id="fui-tab-people" data-social-panel="people" aria-controls="fui-panel-people">Lista de personas</button></div><div class="fui-sync-row"><p class="fui-sync-status" role="status"></p><button class="btn secondary small" data-reset-account hidden>Reiniciar cuenta</button><button class="icon-btn ghost" data-refresh-friends aria-label="Actualizar Amigos">↻</button></div><div class="fui-social-panels"><section id="fui-panel-feed" role="tabpanel" aria-labelledby="fui-tab-feed"><div class="fui-shared-feed"></div><button class="btn secondary" data-more-feed>Ver más actividad</button></section><section id="fui-panel-people" role="tabpanel" aria-labelledby="fui-tab-people"><div class="fui-incoming-list"></div><div class="fui-section-head"><h2>Lista de personas</h2><span class="fui-inline-badge" hidden></span></div><p class="small muted">Envía una solicitud. La otra persona decide si acepta.</p><label class="fui-search"><span aria-hidden="true">⌕</span><input type="search" placeholder="Buscar en tu círculo" aria-label="Buscar personas"/></label><div class="fui-people-list"></div><div class="fui-admin-section"></div></section></div>`;
       body.querySelector('[data-open-profile]').addEventListener('click', profileDialog);
       body.querySelector('[data-invite-friend]').addEventListener('click', async event => {
         const button = event.currentTarget; button.disabled = true;
         try { await inviteDialog(); } catch (error) { toast(error.message); } finally { button.disabled = false; }
       });
       body.querySelector('[data-refresh-friends]').addEventListener('click', () => synchronize());
+      body.querySelector('[data-reset-account]').addEventListener('click', async event => {
+        event.currentTarget.disabled = true;
+        await handleResetAccount();
+        if (event.currentTarget.isConnected) event.currentTarget.disabled = false;
+      });
       body.querySelector('[data-more-feed]').addEventListener('click', async event => {
         const button = event.currentTarget; button.disabled = true;
         try { await loadMore(snapshot().state.nextCursor); } catch (error) { toast(error.message); } finally { button.disabled = false; }

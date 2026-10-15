@@ -1,7 +1,7 @@
 import { socialStore as store } from './social-store-v2.js';
 
 let configPromise, identity, cachedState, onboarding, localDb, helpers, syncing, initializing, debounce, retryTimer;
-let connection = { configured: false, online: navigator.onLine !== false, syncing: false, error: '', lastSync: 0 };
+let connection = { configured: false, online: navigator.onLine !== false, syncing: false, error: '', errorStatus: 0, lastSync: 0 };
 const listeners = new Set();
 const photoUrls = new Map();
 const announce = () => { for (const listener of listeners) listener(snapshot()); };
@@ -73,7 +73,7 @@ export async function api(path, options = {}) {
   } finally { clearTimeout(timeout); options.signal?.removeEventListener('abort', abort); }
 }
 async function useState(state) {
-  cachedState = state; connection.lastSync = Date.now(); connection.error = ''; connection.online = true;
+  cachedState = state; connection.lastSync = Date.now(); connection.error = ''; connection.errorStatus = 0; connection.online = true;
   await store.set('state', state); await store.set('lastSync', connection.lastSync);
   const permitted = new Set(state.posts.filter(post => post.hasPhoto).map(post => post.id));
   for (const [key, value] of photoUrls) if (!permitted.has(key)) { URL.revokeObjectURL(value.url); photoUrls.delete(key); }
@@ -202,7 +202,7 @@ export function synchronize() {
       await useState(await api('/state'));
       if (failed) connection.error = `${failed} entrenamiento${failed === 1 ? '' : 's'} pendiente${failed === 1 ? '' : 's'} de compartir. Sigue guardado en este móvil.`;
     } catch (error) {
-      connection.error = error.message; connection.online = error.status !== 0;
+      connection.error = error.message; connection.errorStatus = error.status || 0; connection.online = error.status !== 0;
       if (error.status === 429) { clearTimeout(retryTimer); retryTimer = setTimeout(() => synchronize(), 65000); }
       // A rejected session must not turn an existing account into a new registration.
       // Keep local data and credentials until a supported recovery flow is available.
@@ -210,6 +210,22 @@ export function synchronize() {
     } finally { connection.syncing = false; announce(); }
   })().finally(() => { syncing = null; });
   return syncing;
+}
+/**
+ * Reiniciar cuenta: olvida el perfil de Amigos de ESTE móvil (identidad,
+ * estado, cola de envío). Los entrenos locales no se tocan: viven en otra
+ * base de datos. Tras el reinicio el móvil queda como si nunca hubiera
+ * entrado en Amigos y puede volver a unirse con una invitación.
+ */
+export async function resetAccount() {
+  clearTimeout(retryTimer); retryTimer = null;
+  clearTimeout(debounce); debounce = null;
+  const oldProfileId = cachedState?.profile?.id;
+  await store.clearAll();
+  try { if (oldProfileId) localStorage.removeItem('ferrum-onboarding-selection:' + oldProfileId); } catch {}
+  identity = undefined; cachedState = undefined; onboarding = undefined;
+  connection.lastSync = 0; connection.error = ''; connection.errorStatus = 0; connection.syncing = false;
+  announce();
 }
 export async function join(values) {
   if (!/^[a-f0-9]{64}$/.test(values.invite || '')) throw new SocialError('Necesitas un enlace de invitación válido para crear tu cuenta.', 400, 'invitation_required');
