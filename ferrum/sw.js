@@ -1,8 +1,9 @@
 // Service worker de Ferrum: offline total.
-// Estrategia: cache-first para todo lo del mismo origen; la app se cachea
-// en la primera visita y luego funciona sin conexión.
+// Estrategia híbrida: red primero para el código de la app (navegación +
+// ui/), caché primero para el resto. La app se cachea en la primera visita
+// y luego funciona sin conexión.
 
-const CACHE = 'ferrum-v67';
+const CACHE = 'ferrum-v68';
 
 self.addEventListener('install', (event) => {
   // 'reload' evita que la precarga coja una copia rancia del borde del CDN
@@ -36,6 +37,36 @@ self.addEventListener('fetch', (event) => {
   // La comprobación de biblioteca (data/exercises.json) necesita red fresca:
   // si el SW la sirviera de caché, nunca se detectarían versiones nuevas.
   if (url.pathname.endsWith('/data/exercises.json')) return;
+  // Código de la app (navegación + ui/): RED PRIMERO, caché como respaldo.
+  // Con cache-first, la webapp servía el index.html y los ui/*.js viejos de
+  // caché hasta que el propio SW se actualizase, y en la webapp ese ciclo
+  // es frágil (reanudación sin navegación, SW viejo sirviendo todo de caché).
+  // Así las actualizaciones aparecen al abrir la app sin depender de que el
+  // SW se actualice primero; sin conexión sigue sirviendo la copia cacheada.
+  const isAppCode = req.mode === 'navigate'
+    || url.pathname.endsWith('/index.html')
+    || url.pathname.includes('/ui/');
+  if (isAppCode) {
+    const fromCache = () => caches.match(req, { ignoreSearch: false }).then((hit) => {
+      if (hit) return hit;
+      return caches.match('./index.html');
+    });
+    event.respondWith(
+      fetch(req).then((res) => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, copy));
+          return res;
+        }
+        // Red con error (404/500): servir la copia cacheada, no la página de error.
+        return fromCache().then((hit) => hit || res);
+      }).catch(() => fromCache()),
+    );
+    return;
+  }
+  // Resto (assets con hash, iconos, manifiesto): caché primero. El hash del
+  // nombre garantiza frescura: un bundle nuevo es una URL nueva y, por tanto,
+  // un fallo de caché que va a red.
   event.respondWith(
     caches.match(req, { ignoreSearch: false }).then((hit) => {
       if (hit) return hit;
