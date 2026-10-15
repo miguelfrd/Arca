@@ -42,18 +42,6 @@ async function inviteDialog() {
     catch (error) { if (error.name !== 'AbortError') toast('No se pudo abrir Compartir. Puedes copiar el enlace.'); }
   });
 }
-function createAccountDialog() {
-  const dialog = popup('Crear cuenta', `<p class="muted">Escribe tu nombre y el código del círculo que te dio Miguel. Así entras sin necesitar un enlace de invitación.</p><form><label class="f" for="fui-create-name">Tu nombre</label><input id="fui-create-name" name="nickname" type="text" minlength="2" maxlength="40" autocomplete="nickname" placeholder="Escribe tu nombre" required/><label class="f" for="fui-create-code">Código del círculo</label><input id="fui-create-code" name="code" type="password" required autocomplete="off" placeholder="El código que te dio Miguel"/><p class="fui-form-error" role="alert"></p><button class="btn" type="submit">Crear cuenta</button></form>`);
-  const form = dialog.querySelector('form');
-  form.addEventListener('submit', async event => {
-    event.preventDefault(); const button = form.querySelector('[type="submit"]'); button.disabled = true;
-    try {
-      await join({ nickname: form.elements.nickname.value.trim(), code: form.elements.code.value });
-      clearPendingInvite(); history.replaceState(null, '', '#/friends'); dialog.close();
-    } catch (error) { if (form.isConnected) form.querySelector('[role="alert"]').textContent = error.message; }
-    finally { if (button.isConnected) button.disabled = false; }
-  });
-}
 function profileDialog() {
   const state = snapshot().state;
   const dialog = popup('Tu perfil', `<form><label class="f" for="fui-profile-name">Tu nombre</label><input id="fui-profile-name" name="nickname" type="text" required minlength="2" maxlength="40" autocomplete="nickname"/><label class="fui-consent"><input type="checkbox" name="sharing"/><span>Compartir entrenamientos y fotos con mis amigos aceptados</span></label><p class="small muted">Al pausarlo, tu actividad deja de aparecer a tus amigos. Pausarlo no borra tus entrenamientos ni modifica tu copia privada.</p><p class="fui-form-error" role="alert"></p><button class="btn" type="submit">Guardar cambios</button></form><hr class="fui-dialog-separator"/><p class="small muted">Si tu cuenta ya no existe en el servidor o quieres empezar de cero en este móvil, reiníciala. Tus entrenos locales no se tocan.</p><button class="btn secondary" type="button" data-reset-account>Reiniciar cuenta</button>`);
@@ -111,13 +99,11 @@ export async function renderFriends(view, params = new URLSearchParams()) {
     if (mode === 'join') {
       if (body.querySelector('#fui-join')) return;
       if (!validInvite(invite) || !invitationReady) {
-        body.innerHTML = `<div class="card fui-social-welcome">${peopleIcon}<h2>Entra por invitación.</h2><p>${invitationError ? esc(invitationError) : 'Crea tu cuenta con el código del círculo que te dio Miguel, o pídele un enlace de invitación.'}</p><p class="muted small">Si ya tenías una cuenta y has cambiado de móvil, espera a disponer de recuperación de cuenta. Crear otra cuenta no recupera tu historial.</p>${validInvite(invite) ? '<button class="btn secondary" data-retry-invite>Comprobar de nuevo</button>' : ''}</div>`;
+        body.innerHTML = `<div class="card fui-social-welcome">${peopleIcon}<h2>Entra por invitación.</h2><p>${invitationError ? esc(invitationError) : 'Pide a Miguel un enlace con tu código único para crear tu cuenta.'}</p><p class="muted small">Si ya tenías una cuenta y has cambiado de móvil, espera a disponer de recuperación de cuenta. Crear otra cuenta no recupera tu historial.</p>${validInvite(invite) ? '<button class="btn secondary" data-retry-invite>Comprobar de nuevo</button>' : ''}</div>`;
         body.querySelector('[data-retry-invite]')?.addEventListener('click', async event => {
           event.currentTarget.disabled = true;
           await checkInvitation(); paint(snapshot());
         });
-        const create = document.createElement('button'); create.className = 'btn'; create.textContent = 'Crear cuenta';
-        create.addEventListener('click', () => createAccountDialog()); body.querySelector('.card').append(create);
         const recover = document.createElement('button'); recover.className = 'btn secondary'; recover.textContent = 'Ya tenía una cuenta';
         recover.addEventListener('click', () => openRecovery()); body.querySelector('.card').append(recover);
         // Administrative bootstrap is available only behind the original local PIN.

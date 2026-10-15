@@ -228,9 +228,7 @@ export async function resetAccount() {
   announce();
 }
 export async function join(values) {
-  const hasInvite = /^[a-f0-9]{64}$/.test(values.invite || '');
-  const hasCode = typeof values.code === 'string' && values.code.trim().length > 0;
-  if (!hasInvite && !hasCode) throw new SocialError('Necesitas un enlace de invitación válido o el código del círculo para crear tu cuenta.', 400, 'invitation_required');
+  if (!/^[a-f0-9]{64}$/.test(values.invite || '')) throw new SocialError('Necesitas un enlace de invitación válido para crear tu cuenta.', 400, 'invitation_required');
   const owner = await ownIdentity();
   if (owner.registered) throw new SocialError('Ya tienes una cuenta en este móvil.', 409, 'already_registered');
   try {
