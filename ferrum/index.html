@@ -73,6 +73,44 @@
       })();
     </script>
     <div id="app"><main id="view"></main></div>
+    <!-- Aviso de instalación: en el navegador (no webapp), invita a guardar la
+         app en pantalla de inicio ANTES de crear la cuenta. Así el perfil queda
+         en la webapp y no se duplica entre el navegador y la webapp. -->
+    <script>
+      (function () {
+        try {
+          var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || !!navigator.standalone;
+          if (standalone) return;
+          if (window.matchMedia && !window.matchMedia('(pointer: coarse)').matches) return;
+          if (localStorage.getItem('ferrum-install-dismissed') === '1') return;
+          if (sessionStorage.getItem('ferrum-install-skip') === '1') return;
+        } catch (e) { return; }
+        function dismiss(permanent) {
+          try {
+            if (permanent) localStorage.setItem('ferrum-install-dismissed', '1');
+            else sessionStorage.setItem('ferrum-install-skip', '1');
+          } catch (e) {}
+          var el = document.getElementById('ferrum-install-prompt');
+          if (el) el.remove();
+        }
+        var overlay = document.createElement('div');
+        overlay.id = 'ferrum-install-prompt';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:9998;background:#f6f4ef;display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 24px) 24px calc(env(safe-area-inset-bottom,0px) + 24px);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;';
+        overlay.innerHTML = '<div style="max-width:360px;width:100%;text-align:center;">' +
+          '<h2 style="font-size:24px;margin:0 0 10px;color:#1a1a1a;">Guarda Ferrum en tu pantalla de inicio</h2>' +
+          '<p style="font-size:15px;line-height:1.5;color:#555;margin:0 0 18px;">Antes de crear tu cuenta, guarda la app. Así queda como una app normal y tu cuenta no se duplica entre el navegador y la webapp.</p>' +
+          '<ol style="text-align:left;font-size:15px;line-height:1.6;color:#333;margin:0 0 22px;padding-left:22px;">' +
+          '<li>Pulsa <strong>Compartir</strong> (el icono de abajo).</li>' +
+          '<li>Elige <strong>Añadir a pantalla de inicio</strong>.</li>' +
+          '<li>Abre Ferrum desde el icono nuevo.</li></ol>' +
+          '<button id="ferrum-install-done" style="display:block;width:100%;padding:14px;border:0;border-radius:12px;background:#c2410c;color:#fff;font-size:17px;font-weight:700;cursor:pointer;margin-bottom:10px;">Ya la guardé</button>' +
+          '<button id="ferrum-install-skip" style="display:block;width:100%;padding:12px;border:0;background:transparent;color:#666;font-size:15px;cursor:pointer;">Continuar en el navegador</button>' +
+          '</div>';
+        (document.body || document.documentElement).appendChild(overlay);
+        document.getElementById('ferrum-install-done').addEventListener('click', function () { dismiss(true); });
+        document.getElementById('ferrum-install-skip').addEventListener('click', function () { dismiss(false); });
+      })();
+    </script>
     <!-- Hoja de la capa visual Atelier: al final para que vaya DESPUÉS de la
          hoja compilada por vite (la inyecta al final del head en el build). -->
     <link rel="stylesheet" href="./ui/ferrum-ui-v1.css" />
