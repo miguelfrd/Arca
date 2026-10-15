@@ -58,6 +58,20 @@
     <link rel="stylesheet" crossorigin href="./assets/index-3-5272Ep.css">
   </head>
   <body>
+    <!-- Versión siempre visible, arriba a la izquierda, en pequeño.
+         Muestra la versión del service worker que sirve la app (la que realmente corre);
+         si no hay SW, queda el valor escrito en el despliegue. -->
+    <div id="ferrum-version" aria-hidden="true" style="position:fixed;top:calc(env(safe-area-inset-top, 0px) + 4px);left:8px;z-index:9999;font:10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em;opacity:.55;pointer-events:none;color:#888">v67</div>
+    <script>
+      (function () {
+        var el = document.getElementById('ferrum-version');
+        if (!el) return;
+        fetch('./sw-version', { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+          t = (t || '').trim().replace(/^ferrum-/, '');
+          if (t) el.textContent = t;
+        }).catch(function () {});
+      })();
+    </script>
     <div id="app"><main id="view"></main></div>
     <!-- Hoja de la capa visual Atelier: al final para que vaya DESPUÉS de la
          hoja compilada por vite (la inyecta al final del head en el build). -->
