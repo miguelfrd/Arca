@@ -3,14 +3,14 @@
 // ui/), caché primero para el resto. La app se cachea en la primera visita
 // y luego funciona sin conexión.
 
-const CACHE = 'ferrum-v73';
+const CACHE = 'ferrum-v74';
 
 self.addEventListener('install', (event) => {
   // 'reload' evita que la precarga coja una copia rancia del borde del CDN
   // a mitad de un deploy (fue la causa de la pantalla negra v6->v7).
   const fresh = (u) => new Request(new URL(u, self.registration.scope).href, { cache: 'reload' });
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html', './manifest.webmanifest', './social-config.json', './ui/app-v2.js', './ui/data-status-v2.js', './ui/account-security-v2.js', './ui/cloud-v2.js', './ui/account-recovery-v2.js', './ui/feed-v2.js', './ui/ferrum-ui-v1.css', './ui/ferrum-ui-v1.js', './ui/ferrum-v2.css', './ui/friends-v2.js', './ui/home-v2.js', './ui/invite-v2.js', './ui/motion-v2.js', './ui/platform-v2.js', './ui/social-store-v2.js', './ui/social-v2.js'].map(fresh))).then(() => self.skipWaiting()),
+    caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html', './manifest.webmanifest', './social-config.json', './ui/app-v2.js', './ui/data-status-v2.js', './ui/account-security-v2.js', './ui/cloud-v2.js', './ui/account-recovery-v2.js', './ui/feed-v2.js', './ui/ferrum-ui-v1.css', './ui/ferrum-ui-v1.js', './ui/ferrum-v2.css', './ui/friends-v2.js', './ui/home-v2.js', './ui/invite-v2.js', './ui/motion-v2.js', './ui/platform-v2.js', './ui/social-store-v2.js', './ui/push-v2.js', './ui/social-v2.js'].map(fresh))).then(() => self.skipWaiting()),
   );
 });
 
@@ -79,4 +79,31 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => req.mode === 'navigate' ? caches.match('./index.html') : Promise.reject(new Error('offline')));
     }),
   );
+});
+
+// ---------------- Web Push: aviso de fin de descanso ----------------
+self.addEventListener('push', (event) => {
+  let data = { title: 'Ferrum', body: '¡Descanso terminado!', tag: 'rest-timer', url: './#/train' };
+  try { if (event.data) data = { ...data, ...event.data.json() }; } catch { /* payload no JSON */ }
+  event.waitUntil(self.registration.showNotification(data.title, {
+    body: data.body,
+    tag: data.tag,
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    data: { url: data.url },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || './#/train', self.registration.scope).href;
+  event.waitUntil((async () => {
+    const wins = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const w of wins) {
+      try { await w.focus(); } catch { /* noop */ }
+      try { await w.navigate(target); } catch { /* noop */ }
+      return;
+    }
+    await self.clients.openWindow(target);
+  })());
 });
