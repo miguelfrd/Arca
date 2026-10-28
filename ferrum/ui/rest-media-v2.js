@@ -3,28 +3,41 @@
 // iOS congela el JS de la app al bloquear el móvil o salir de ella, así que
 // un setTimeout no puede hacer sonar la sirena. Pero un <audio> que se está
 // reproduciendo sigue sonando (como un vídeo de Safari en segundo plano). Por
-// eso, al empezar un descanso generamos un WAV con N segundos de silencio y la
-// sirena al final, y lo reproducimos: la sirena va dentro del archivo y suena
-// a su hora aunque el JS esté dormido. Con Media Session, la pantalla de
-// bloqueo y el Centro de control muestran «Descanso» con la barra de progreso
-// y el tiempo restante.
+// eso, al empezar un descanso generamos un WAV con el descanso en silencio y
+// la sirena al final, y lo reproducimos: la sirena va dentro del archivo y
+// suena a su hora aunque el JS esté dormido.
+//
+// El reproductor de la pantalla de bloqueo hace de «Live Activity» al estilo
+// Hevy (las de verdad son solo para apps nativas):
+//   título    → ejercicio de la siguiente serie
+//   subtítulo → «Siguiente: serie 2 de 3 (27 kg × 8 reps)»
+//   carátula  → ilustración del ejercicio con la serie dibujada encima
+//   barra     → progreso del descanso, con transcurrido y restante
+//   botones   → ⟲ −10 s · ⏸ omitir descanso · ⟳ +10 s (iOS pinta «10» en
+//               los botones de salto sea cual sea el intervalo, así que
+//               usamos 10 s para que el botón no mienta)
 //
 // El bundle de entrenamiento habla con este módulo por eventos de window:
-//   ferrum:rest-start {endsAt, token, sound}  empieza o reprograma (+15s)
-//   ferrum:rest-stop  {token}                  descanso cancelado
-//   ferrum:rest-end   {token, handled}         fin con la app abierta; si la
-//                                              sirena ya va en el audio,
-//                                              marcamos handled y el bundle
-//                                              no la duplica.
+//   ferrum:rest-start  {endsAt, token, sound, info}  empieza o reprograma
+//   ferrum:rest-stop   {token}                        descanso cancelado
+//   ferrum:rest-end    {token, handled}               fin con la app abierta;
+//                      si la sirena ya va en el audio, marcamos handled y el
+//                      bundle no la duplica
+//   ferrum:rest-remote {action:'add', seconds} | {action:'skip'}
+//                      (lo emitimos nosotros: botones de la pantalla de
+//                      bloqueo; el bundle ajusta su temporizador y el push)
 
 const RATE = 8000;
 const MAX_SECONDS = 15 * 60; // tope de tamaño del WAV (~14 MB)
+const REMOTE_STEP = 10;
 
 let audio = null;
 let blobUrl = '';
 let current = ''; // token del descanso que suena
+let startedAt = 0; // inicio del descanso actual (la barra cuenta desde aquí)
 let gen = 0; // cada start() invalida los play() pendientes del anterior
 let siren = null;
+let artKey = '', artUrl = '';
 
 // Misma sirena que la del bundle (sierra 520↔980 Hz, 1,4 s, paso bajo
 // 2,4 kHz), sintetizada por armónicos para no generar aliasing a 8 kHz.
@@ -73,27 +86,93 @@ function buildWav(silenceSec) {
 }
 
 function clock(ms) {
-  return new Date(ms).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return new Date(ms).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
-function setupSession(endsAt, duration) {
+const iconArt = (s) => ({ src: new URL(`../icons/icon-${s}.png`, import.meta.url).href, sizes: `${s}x${s}`, type: 'image/png' });
+
+// Carátula: la ilustración del ejercicio con la siguiente serie encima, en
+// letra grande para que se lea también en la miniatura de la pantalla de
+// bloqueo. Se dibuja en canvas y va como PNG (la carátula no admite webp en
+// todos los iOS).
+function loadImage(src) {
+  return new Promise((resolve) => {
+    if (!src) { resolve(null); return; }
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = new URL(src, document.baseURI).href;
+  });
+}
+
+async function renderArt(info) {
+  const key = JSON.stringify([info.img, info.big, info.small]);
+  if (key === artKey) return artUrl;
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d');
+  if (!g) return '';
+  g.fillStyle = '#0b0b0d';
+  g.fillRect(0, 0, S, S);
+  const img = await loadImage(info.img);
+  if (img) g.drawImage(img, 0, 0, S, S);
+  const grad = g.createLinearGradient(0, S * 0.42, 0, S);
+  grad.addColorStop(0, 'rgba(11,11,13,0)');
+  grad.addColorStop(0.45, 'rgba(11,11,13,.86)');
+  grad.addColorStop(1, 'rgba(11,11,13,.96)');
+  g.fillStyle = grad;
+  g.fillRect(0, S * 0.42, S, S * 0.58);
+  const font = (w, px) => `${w} ${px}px -apple-system, system-ui, "Helvetica Neue", sans-serif`;
+  const fit = (text, w, max, min) => {
+    let px = max;
+    g.font = font(w, px);
+    while (px > min && g.measureText(text).width > S - 56) { px -= 2; g.font = font(w, px); }
+  };
+  g.textAlign = 'center';
+  g.fillStyle = '#ffffff';
+  if (info.big) { fit(info.big, 800, 96, 40); g.fillText(info.big, S / 2, S - 92); }
+  if (info.small) { g.fillStyle = '#f0a37c'; fit(info.small, 700, 40, 22); g.fillText(info.small, S / 2, S - 38); }
+  g.textAlign = 'left';
+  g.fillStyle = 'rgba(255,255,255,.75)';
+  g.font = font(800, 26);
+  g.fillText('FERRUM', 26, 46);
+  try {
+    artUrl = c.toDataURL('image/png');
+    artKey = key;
+  } catch { return ''; }
+  return artUrl;
+}
+
+function remote(detail) {
+  try { window.dispatchEvent(new CustomEvent('ferrum:rest-remote', { detail })); } catch { /* noop */ }
+}
+
+function setupSession(endsAt, duration, position, info, mine) {
   const ms = navigator.mediaSession;
   if (!ms) return;
-  try {
-    const icon = (s) => ({ src: new URL(`../icons/icon-${s}.png`, import.meta.url).href, sizes: `${s}x${s}`, type: 'image/png' });
-    ms.metadata = new window.MediaMetadata({
-      title: 'Descanso',
-      artist: 'Ferrum',
-      album: `Termina a las ${clock(endsAt)}`,
-      artwork: [icon(192), icon(512)],
-    });
-  } catch { /* MediaMetadata no disponible */ }
+  const meta = (art) => {
+    try {
+      ms.metadata = new window.MediaMetadata({
+        title: info?.title || 'Descanso',
+        artist: info?.sub || 'Ferrum',
+        album: `Descanso · termina a las ${clock(endsAt)}`,
+        artwork: art ? [{ src: art, sizes: '512x512', type: 'image/png' }] : [iconArt(192), iconArt(512)],
+      });
+    } catch { /* MediaMetadata no disponible */ }
+  };
+  meta(info && artKey === JSON.stringify([info.img, info.big, info.small]) ? artUrl : '');
+  if (info) renderArt(info).then((art) => { if (art && mine === gen) meta(art); }).catch(() => {});
   try { ms.playbackState = 'playing'; } catch { /* noop */ }
-  try { ms.setPositionState?.({ duration, playbackRate: 1, position: 0 }); } catch { /* noop */ }
+  try { ms.setPositionState?.({ duration, playbackRate: 1, position: Math.min(position, duration) }); } catch { /* noop */ }
+  const step = (sign) => (d) => remote({ action: 'add', seconds: sign * REMOTE_STEP });
+  const skip = () => remote({ action: 'skip' });
   const handlers = {
-    play: () => { audio?.play().catch(() => {}); try { ms.playbackState = 'playing'; } catch { /* noop */ } },
-    pause: () => { audio?.pause(); try { ms.playbackState = 'paused'; } catch { /* noop */ } },
-    seekbackward: null, seekforward: null, seekto: null, previoustrack: null, nexttrack: null,
+    seekbackward: step(-1),
+    seekforward: step(1),
+    pause: skip,
+    stop: skip,
+    play: () => { audio?.play().catch(() => {}); },
+    seekto: null, previoustrack: null, nexttrack: null,
   };
   for (const [k, fn] of Object.entries(handlers)) {
     try { ms.setActionHandler(k, fn); } catch { /* acción no soportada */ }
@@ -113,12 +192,18 @@ function release() {
   }
 }
 
-function start({ endsAt, token, sound }) {
+function start({ endsAt, token, sound, info }) {
   if (!sound || !token) { release(); return; }
-  const secs = (endsAt - Date.now()) / 1000;
-  if (!(secs > 0) || secs > MAX_SECONDS) { release(); return; }
+  const now = Date.now();
+  const same = token === current;
+  // Reprogramar (±tiempo) un descanso que ya suena conserva su inicio, para
+  // que la barra siga mostrando lo transcurrido.
+  const begin = same ? startedAt : now;
+  const end = Math.max(endsAt, now);
+  if (!same && endsAt <= now) { release(); return; }
+  if ((end - begin) / 1000 > MAX_SECONDS) { release(); return; }
   try {
-    const { blob, duration } = buildWav(secs);
+    const { blob, duration } = buildWav((end - begin) / 1000);
     if (!audio) {
       audio = new Audio();
       audio.preload = 'auto';
@@ -127,10 +212,18 @@ function start({ endsAt, token, sound }) {
     if (blobUrl) URL.revokeObjectURL(blobUrl);
     blobUrl = URL.createObjectURL(blob);
     current = token;
+    startedAt = begin;
     const mine = ++gen;
+    const at = () => Math.max(0, (Date.now() - begin) / 1000);
     audio.src = blobUrl;
+    audio.addEventListener('loadedmetadata', () => {
+      if (mine !== gen) return;
+      try { audio.currentTime = at(); } catch { /* noop */ }
+    }, { once: true });
     // play() dentro del toque que marca la serie: iOS lo exige la primera vez.
-    audio.play().then(() => { if (mine === gen) setupSession(endsAt, duration); }).catch(() => { if (mine === gen) release(); });
+    audio.play()
+      .then(() => { if (mine === gen) setupSession(end, duration, at(), info, mine); })
+      .catch(() => { if (mine === gen) release(); });
   } catch {
     release();
   }
