@@ -17,8 +17,15 @@
 //               los botones de salto sea cual sea el intervalo, así que
 //               usamos 10 s para que el botón no mienta)
 //
+// Solo con «Tarjeta de descanso en la pantalla de bloqueo» activada en
+// Ajustes: en iOS el reproductor de la pantalla de bloqueo exige quedarse con
+// el audio en exclusiva y pausa la música de otras apps (Spotify, Apple
+// Music…). Por defecto (modo compatible con música) no reproducimos nada: la
+// sesión de audio queda en «ambient» para que la sirena de la app se mezcle
+// con la música, y con el móvil bloqueado avisa la notificación push.
+//
 // El bundle de entrenamiento habla con este módulo por eventos de window:
-//   ferrum:rest-start  {endsAt, token, sound, info}  empieza o reprograma
+//   ferrum:rest-start  {endsAt, token, sound, card, info}  empieza o reprograma
 //   ferrum:rest-stop   {token}                        descanso cancelado
 //   ferrum:rest-end    {token, handled}               fin con la app abierta;
 //                      si la sirena ya va en el audio, marcamos handled y el
@@ -192,8 +199,16 @@ function release() {
   }
 }
 
-function start({ endsAt, token, sound, info }) {
+// Tipo de sesión de audio de la página (Safari 16.4+): «ambient» se mezcla
+// con la música de otras apps; «auto» deja que el <audio> tome el control.
+function audioSessionType(type) {
+  try { if (navigator.audioSession && navigator.audioSession.type !== type) navigator.audioSession.type = type; } catch { /* noop */ }
+}
+
+function start({ endsAt, token, sound, card, info }) {
+  if (!card) { release(); audioSessionType('ambient'); return; }
   if (!sound || !token) { release(); return; }
+  audioSessionType('auto');
   const now = Date.now();
   const same = token === current;
   // Reprogramar (±tiempo) un descanso que ya suena conserva su inicio, para
