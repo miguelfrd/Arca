@@ -363,6 +363,119 @@ html[data-ferrum-ui][data-theme="dark"][data-fui-skin="command"][data-fui-palett
 }
 
 /* ======================================================================
+   Paletas por tono (Ajustes → Color): Azul, Rojo, Verde, Violeta y
+   Personalizado. Todo sale de un solo tono --p-h (0–360) en OKLCH, así que
+   cualquier tono da una paleta equilibrada en claro y en oscuro.
+   ====================================================================== */
+html[data-fui-palette="azul"] { --p-h: 255; }
+html[data-fui-palette="rojo"] { --p-h: 25; }
+html[data-fui-palette="verde"] { --p-h: 152; }
+html[data-fui-palette="violeta"] { --p-h: 295; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"][data-fui-palette="azul"],
+html[data-ferrum-ui][data-theme][data-fui-skin="command"][data-fui-palette="rojo"],
+html[data-ferrum-ui][data-theme][data-fui-skin="command"][data-fui-palette="verde"],
+html[data-ferrum-ui][data-theme][data-fui-skin="command"][data-fui-palette="violeta"],
+html[data-ferrum-ui][data-theme][data-fui-skin="command"][data-fui-palette="custom"] {
+  --c-coral: oklch(.66 .19 var(--p-h, 255));
+  --fx-hero-bg: oklch(.2 .05 var(--p-h, 255));
+  --fx-hero-1: oklch(.55 .18 calc(var(--p-h, 255) + 40) / .62);
+  --fx-hero-1b: oklch(.25 .08 var(--p-h, 255) / .3);
+  --fx-hero-2: oklch(.68 .2 var(--p-h, 255) / .5);
+  --fx-band-a: oklch(.7 .2 var(--p-h, 255) / .6);
+  --fx-band-b: oklch(.72 .16 calc(var(--p-h, 255) + 60) / .5);
+  --fx-accent-glow: oklch(.66 .19 var(--p-h, 255) / .4);
+  --fx-accent-glow-hi: oklch(.66 .19 var(--p-h, 255) / .7);
+  --fx-tab-glow: oklch(.66 .19 var(--p-h, 255) / .3);
+  --fx-start-bg: oklch(.93 .05 var(--p-h, 255));
+  --fx-start-fg: oklch(.28 .08 var(--p-h, 255));
+  --fx-done-a: oklch(.7 .19 var(--p-h, 255));
+  --fx-done-b: oklch(.88 .09 var(--p-h, 255));
+  --fx-sheen: oklch(.85 .12 var(--p-h, 255) / .3);
+  --fx-halo-ring: oklch(.85 .1 var(--p-h, 255) / .45);
+  --fx-halo-glow: oklch(.7 .19 var(--p-h, 255) / .4);
+  --fx-sparks: oklch(.72 .19 var(--p-h, 255)), oklch(.88 .09 var(--p-h, 255)), oklch(.64 .2 var(--p-h, 255)), oklch(.96 .03 var(--p-h, 255));
+  --fx-confetti: oklch(.72 .19 var(--p-h, 255)), oklch(.86 .1 var(--p-h, 255)), oklch(.72 .16 calc(var(--p-h, 255) + 50)), oklch(.78 .14 calc(var(--p-h, 255) - 50)), oklch(.64 .2 var(--p-h, 255)), #ffffff;
+  --fx-stroke-grad: conic-gradient(from var(--fx-a), oklch(.72 .19 var(--p-h, 255)), oklch(.88 .09 var(--p-h, 255)), oklch(.72 .16 calc(var(--p-h, 255) + 60)), oklch(.78 .14 calc(var(--p-h, 255) - 40)), oklch(.72 .19 var(--p-h, 255)));
+}
+html[data-ferrum-ui][data-theme="light"][data-fui-skin="command"][data-fui-palette="azul"],
+html[data-ferrum-ui][data-theme="light"][data-fui-skin="command"][data-fui-palette="rojo"],
+html[data-ferrum-ui][data-theme="light"][data-fui-skin="command"][data-fui-palette="verde"],
+html[data-ferrum-ui][data-theme="light"][data-fui-skin="command"][data-fui-palette="violeta"],
+html[data-ferrum-ui][data-theme="light"][data-fui-skin="command"][data-fui-palette="custom"] {
+  --k-canvas: oklch(.972 .013 var(--p-h, 255));
+  --k-card: #ffffff;
+  --k-card-2: oklch(.985 .008 var(--p-h, 255));
+  --k-well: oklch(.5 .15 var(--p-h, 255) / .06);
+  --k-badge: oklch(.94 .03 var(--p-h, 255));
+  --k-hair: oklch(.3 .08 var(--p-h, 255) / .09);
+  --k-edge: oklch(.88 .035 var(--p-h, 255));
+  --k-ring: oklch(.86 .045 var(--p-h, 255));
+  --k-text: oklch(.22 .04 var(--p-h, 255));
+  --k-text-2: oklch(.45 .05 var(--p-h, 255));
+  --k-text-3: oklch(.62 .04 var(--p-h, 255));
+  --k-key: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 0 1px oklch(.3 .08 var(--p-h, 255) / .07), 0 2px 6px oklch(.5 .15 var(--p-h, 255) / .05);
+  --k-key-hi: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 0 1px oklch(.3 .08 var(--p-h, 255) / .09), 0 4px 14px oklch(.5 .15 var(--p-h, 255) / .08);
+  --k-btn: oklch(.6 .19 var(--p-h, 255));
+  --k-btn-fg: #ffffff;
+  --k-btn-shadow: 0 6px 14px oklch(.6 .19 var(--p-h, 255) / .28), inset 0 1px 0 rgba(255, 255, 255, .25);
+  --k-ghost: #ffffff;
+  --k-ghost-fg: oklch(.22 .04 var(--p-h, 255));
+  --k-glass: rgba(255, 255, 255, .96);
+  --k-glass-shadow: 0 8px 30px oklch(.5 .15 var(--p-h, 255) / .12), inset 0 1px 0 rgba(255, 255, 255, .9);
+  --k-pill: oklch(.6 .19 var(--p-h, 255) / .1);
+  --k-done-wash: oklch(.62 .19 var(--p-h, 255) / .1);
+  --k-done-ring: oklch(.62 .19 var(--p-h, 255) / .28);
+  --k-done-text: oklch(.5 .18 var(--p-h, 255));
+  --k-done-btn: oklch(.62 .19 var(--p-h, 255));
+  --k-done-btn-fg: #ffffff;
+  --k-done-glow: oklch(.62 .19 var(--p-h, 255) / .35);
+  --k-ember: oklch(.93 .05 var(--p-h, 255));
+  --k-ember-fg: oklch(.55 .2 var(--p-h, 255));
+  --k-toast: oklch(.22 .04 var(--p-h, 255));
+  --k-toast-fg: #ffffff;
+}
+html[data-ferrum-ui][data-theme="dark"][data-fui-skin="command"][data-fui-palette="azul"],
+html[data-ferrum-ui][data-theme="dark"][data-fui-skin="command"][data-fui-palette="rojo"],
+html[data-ferrum-ui][data-theme="dark"][data-fui-skin="command"][data-fui-palette="verde"],
+html[data-ferrum-ui][data-theme="dark"][data-fui-skin="command"][data-fui-palette="violeta"],
+html[data-ferrum-ui][data-theme="dark"][data-fui-skin="command"][data-fui-palette="custom"] {
+  --c-coral: oklch(.74 .16 var(--p-h, 255));
+  --k-canvas: oklch(.2 .02 var(--p-h, 255));
+  --k-card: oklch(.24 .025 var(--p-h, 255));
+  --k-card-2: oklch(.27 .028 var(--p-h, 255));
+  --k-well: oklch(.9 .05 var(--p-h, 255) / .06);
+  --k-badge: oklch(.31 .03 var(--p-h, 255));
+  --k-hair: oklch(.9 .05 var(--p-h, 255) / .085);
+  --k-edge: oklch(.37 .035 var(--p-h, 255));
+  --k-ring: oklch(.35 .03 var(--p-h, 255));
+  --k-text: oklch(.97 .01 var(--p-h, 255));
+  --k-text-2: oklch(.79 .04 var(--p-h, 255));
+  --k-text-3: oklch(.63 .035 var(--p-h, 255));
+  --k-key: inset 0 1px 0 oklch(.95 .03 var(--p-h, 255) / .07), 0 0 0 1px oklch(.9 .05 var(--p-h, 255) / .09), inset 0 -1px 0 rgba(0, 0, 0, .25);
+  --k-key-hi: inset 0 1px 0 oklch(.95 .03 var(--p-h, 255) / .11), 0 0 0 1px oklch(.9 .05 var(--p-h, 255) / .14), inset 0 -1px 0 rgba(0, 0, 0, .3);
+  --k-btn: oklch(.88 .07 var(--p-h, 255));
+  --k-btn-fg: oklch(.25 .06 var(--p-h, 255));
+  --k-btn-shadow: 0 4px 14px oklch(.7 .19 var(--p-h, 255) / .22), inset 0 1px 0 rgba(255, 255, 255, .6);
+  --k-ghost: oklch(.9 .05 var(--p-h, 255) / .05);
+  --k-ghost-fg: oklch(.93 .04 var(--p-h, 255));
+  --k-glass: oklch(.24 .025 var(--p-h, 255) / .97);
+  --k-glass-shadow: 0 4px 40px 8px rgba(0, 0, 0, .35), 0 0 30px oklch(.7 .19 var(--p-h, 255) / .08), inset 0 1px 0 oklch(.95 .03 var(--p-h, 255) / .08);
+  --k-pill: oklch(.74 .16 var(--p-h, 255) / .14);
+  --k-done-wash: oklch(.72 .18 var(--p-h, 255) / .14);
+  --k-done-ring: oklch(.72 .18 var(--p-h, 255) / .3);
+  --k-done-text: oklch(.82 .13 var(--p-h, 255));
+  --k-done-btn: oklch(.72 .18 var(--p-h, 255));
+  --k-done-btn-fg: oklch(.2 .05 var(--p-h, 255));
+  --k-done-glow: oklch(.72 .18 var(--p-h, 255) / .4);
+  --k-ember: oklch(.32 .07 var(--p-h, 255));
+  --k-ember-fg: oklch(.82 .13 var(--p-h, 255));
+  --k-toast: oklch(.88 .07 var(--p-h, 255));
+  --k-toast-fg: oklch(.25 .06 var(--p-h, 255));
+  --fx-start-bg: oklch(.88 .07 var(--p-h, 255));
+  --fx-start-fg: oklch(.25 .06 var(--p-h, 255));
+}
+
+/* ======================================================================
    Movimiento (con ui/ferrum-command-motion-v1.js). Lenguaje GSAP: salidas
    expo.out, rebotes back.out y elásticos, trazos en degradado que giran y
    destellos de color. Solo transform/opacity/filter: fluido en el móvil.
