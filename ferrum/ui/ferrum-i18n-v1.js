@@ -13,8 +13,11 @@
   const root = document.documentElement;
   const read = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const lang = read('ferrum-lang') === 'en' ? 'en' : 'es';
-  const palette = read('ferrum-palette') === 'rosa' ? 'rosa' : 'grafito';
+  const PALETTES = ['grafito', 'rosa', 'azul', 'rojo', 'verde', 'violeta', 'custom'];
+  const palette = PALETTES.includes(read('ferrum-palette')) ? read('ferrum-palette') : 'grafito';
+  const hue = Math.max(0, Math.min(360, Number(read('ferrum-hue')) || 255));
   root.dataset.fuiPalette = palette;
+  if (palette === 'custom') root.style.setProperty('--p-h', String(hue));
   root.lang = lang;
 
   // El service worker traduce el aviso push de fin de descanso.
@@ -101,51 +104,25 @@
   const api = {
     lang, palette, t: tr,
     setLang(next) { try { localStorage.setItem('ferrum-lang', next === 'en' ? 'en' : 'es'); } catch { /* noop */ } location.reload(); },
+    palettes: PALETTES,
+    hue: () => Math.max(0, Math.min(360, Number(read('ferrum-hue')) || 255)),
     setPalette(next) {
-      const p = next === 'rosa' ? 'rosa' : 'grafito';
+      const p = PALETTES.includes(next) ? next : 'grafito';
       try { localStorage.setItem('ferrum-palette', p); } catch { /* noop */ }
       root.dataset.fuiPalette = p;
+      if (p === 'custom') root.style.setProperty('--p-h', String(api.hue()));
+      else root.style.removeProperty('--p-h');
+    },
+    setHue(h) {
+      const v = Math.round(Math.max(0, Math.min(360, Number(h) || 0)));
+      try { localStorage.setItem('ferrum-hue', String(v)); } catch { /* noop */ }
+      root.style.setProperty('--p-h', String(v));
     },
   };
   window.__ferrumI18n = api;
 
-  // --- Ajustes: Estilo e Idioma ---------------------------------------------
-  const L = lang === 'en'
-    ? { style: 'Style', grafito: 'Graphite', rosa: 'Pink', language: 'Language', units: 'Units: kilograms' }
-    : { style: 'Estilo', grafito: 'Grafito', rosa: 'Rosa', language: 'Idioma', units: 'Unidades: kilogramos' };
-  function injectSettings() {
-    const theme = document.getElementById('s-theme');
-    if (!theme || document.getElementById('s-palette')) return;
-    const wrap = document.createElement('div');
-    wrap.dataset.i18nSkip = '1';
-    wrap.innerHTML = `
-      <label class="f" for="s-palette">${L.style}</label>
-      <select id="s-palette">
-        <option value="grafito"${palette === 'grafito' ? ' selected' : ''}>${L.grafito}</option>
-        <option value="rosa"${root.dataset.fuiPalette === 'rosa' ? ' selected' : ''}>${L.rosa}</option>
-      </select>
-      <label class="f" for="s-lang">${L.language}</label>
-      <select id="s-lang">
-        <option value="es"${lang === 'es' ? ' selected' : ''}>Español</option>
-        <option value="en"${lang === 'en' ? ' selected' : ''}>English</option>
-      </select>`;
-    theme.insertAdjacentElement('afterend', wrap);
-    wrap.querySelector('#s-palette').value = root.dataset.fuiPalette;
-    wrap.querySelector('#s-palette').addEventListener('change', (e) => api.setPalette(e.target.value));
-    wrap.querySelector('#s-lang').addEventListener('change', (e) => api.setLang(e.target.value));
-    // El tono de fondo no se usa con este diseño: se oculta su control.
-    if (root.dataset.fuiSkin === 'command') {
-      const hue = document.querySelector('.hue-row');
-      if (hue) {
-        hue.style.display = 'none';
-        const lbl = hue.previousElementSibling;
-        if (lbl?.matches('label.f')) lbl.style.display = 'none';
-      }
-    }
-    for (const el of document.querySelectorAll('#view .small.muted')) {
-      if (/^(Unidades: kilogramos|Units: kilograms)/.test(el.textContent.trim())) el.textContent = L.units;
-    }
-  }
+  // Los controles de idioma y estilo viven en ui/ferrum-settings-v1.js.
+  function injectSettings() { /* ver ferrum-settings-v1.js */ }
 
   // --- Traducción en vivo (solo en inglés) -----------------------------------
   const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'];
