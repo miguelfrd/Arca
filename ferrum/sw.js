@@ -3,14 +3,14 @@
 // ui/), caché primero para el resto. La app se cachea en la primera visita
 // y luego funciona sin conexión.
 
-const CACHE = 'ferrum-v79';
+const CACHE = 'ferrum-v80';
 
 self.addEventListener('install', (event) => {
   // 'reload' evita que la precarga coja una copia rancia del borde del CDN
   // a mitad de un deploy (fue la causa de la pantalla negra v6->v7).
   const fresh = (u) => new Request(new URL(u, self.registration.scope).href, { cache: 'reload' });
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html', './manifest.webmanifest', './social-config.json', './ui/app-v2.js', './ui/data-status-v2.js', './ui/account-security-v2.js', './ui/cloud-v2.js', './ui/account-recovery-v2.js', './ui/feed-v2.js', './ui/ferrum-ui-v1.css', './ui/ferrum-ui-v1.js', './ui/ferrum-v2.css', './ui/friends-v2.js', './ui/home-v2.js', './ui/invite-v2.js', './ui/motion-v2.js', './ui/platform-v2.js', './ui/social-store-v2.js', './ui/push-v2.js', './ui/rest-media-v2.js', './ui/ferrum-command-v1.css', './ui/ferrum-command-motion-v1.js', './fonts/inter-latin-wght.woff2', './fonts/geist-mono-latin-400.woff2', './fonts/geist-mono-latin-500.woff2', './ui/social-v2.js'].map(fresh))).then(() => self.skipWaiting()),
+    caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html', './manifest.webmanifest', './social-config.json', './ui/app-v2.js', './ui/data-status-v2.js', './ui/account-security-v2.js', './ui/cloud-v2.js', './ui/account-recovery-v2.js', './ui/feed-v2.js', './ui/ferrum-ui-v1.css', './ui/ferrum-ui-v1.js', './ui/ferrum-v2.css', './ui/friends-v2.js', './ui/home-v2.js', './ui/invite-v2.js', './ui/motion-v2.js', './ui/platform-v2.js', './ui/social-store-v2.js', './ui/push-v2.js', './ui/rest-media-v2.js', './ui/ferrum-command-v1.css', './ui/ferrum-command-motion-v1.js', './ui/ferrum-i18n-v1.js', './ui/ferrum-i18n-en-v1.js', './fonts/inter-latin-wght.woff2', './fonts/geist-mono-latin-400.woff2', './fonts/geist-mono-latin-500.woff2', './ui/social-v2.js'].map(fresh))).then(() => self.skipWaiting()),
   );
 });
 
@@ -82,15 +82,23 @@ self.addEventListener('fetch', (event) => {
 });
 
 // ---------------- Web Push: aviso de fin de descanso ----------------
+// Idioma elegido en la app (lo guarda ui/ferrum-i18n-v1.js en Cache Storage).
+const PUSH_EN = { '¡Descanso terminado!': 'Rest finished!', 'Descanso terminado': 'Rest finished', '¡A por la siguiente serie!': 'Time for your next set!' };
+async function pushLang() {
+  try { const r = await (await caches.open('prefs-ferrum')).match('./__lang'); return r ? (await r.text()).trim() : 'es'; } catch { return 'es'; }
+}
 self.addEventListener('push', (event) => {
   let data = { title: 'Ferrum', body: '¡Descanso terminado!', tag: 'rest-timer', url: './#/train' };
   try { if (event.data) data = { ...data, ...event.data.json() }; } catch { /* payload no JSON */ }
-  event.waitUntil(self.registration.showNotification(data.title, {
+  event.waitUntil(pushLang().then((lang) => {
+    if (lang === 'en') { data.title = PUSH_EN[data.title] || data.title; data.body = PUSH_EN[data.body] || data.body; }
+    return self.registration.showNotification(data.title, {
     body: data.body,
     tag: data.tag,
     icon: './icons/icon-192.png',
     badge: './icons/icon-192.png',
     data: { url: data.url },
+  });
   }));
 });
 
