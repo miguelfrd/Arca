@@ -452,3 +452,6 @@ html[data-fui-skin="command"] .fx-halo { box-shadow: 0 0 0 1px var(--fx-halo-rin
   html[data-fui-skin="command"] *, html[data-fui-skin="command"] *::before, html[data-fui-skin="command"] *::after { animation: none !important; transition-duration: 0ms !important; }
   html[data-fui-skin="command"] .fx-layer { display: none; }
 }
+
+/* Títulos de pantallas sin .screen-head (Estadísticas…): mismo peso que el resto */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #view h1 { font-weight: 500; letter-spacing: .004em; }

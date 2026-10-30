@@ -41,6 +41,14 @@
     [/^Marcar serie (\d+) como hecha$/, (m, a) => `Mark set ${a} as done`],
     [/^(KG|REPS) serie (\d+)$/, (m, a, b) => `${a} set ${b}`],
     [/^Demasiados intentos\. Espera (\d+) s…$/, (m, a) => `Too many attempts. Wait ${a} s…`],
+    [/^Eliminar entrenamiento (.+)$/, (m, a) => `Delete workout ${a}`],
+    [/^Quitar serie (\d+)$/, (m, a) => `Remove set ${a}`],
+    [/^Desmarcar serie (\d+) como hecha$/, (m, a) => `Unmark set ${a} as done`],
+    [/^Tipo de serie: (.+)\. Toca para cambiar\.$/, (m, a) => `Set type: ${tr(a)}. Tap to change.`],
+    [/^Versión (v\d+)$/, (m, a) => `Version ${a}`],
+    [/^(.+) \((cm|kg|%|s|km)\)$/, (m, a, u) => { const t = translate(a); return t === a ? m : `${t} (${u})`; }],
+    [/^Ferrum (v\d+) — tus datos viven solo en este móvil \(IndexedDB\), sin cuentas ni servidores\. Haz copias de seguridad desde el apartado «Copia de seguridad» de esta misma pantalla\.$/,
+      (m, a) => `Ferrum ${a} — your data lives only on this phone (IndexedDB), no accounts or servers. Make backups from the «Backup» section on this same screen.`],
   ] : [];
 
   // Fragmentos de plantilla: se sustituyen dentro del texto, del más largo
@@ -59,7 +67,7 @@
   const cache = new Map();
   function tr(text) {
     if (lang !== 'en' || !text) return text;
-    const key = text.trim();
+    const key = text.trim().replace(/\s+/g, ' ');
     if (!key || !/\p{L}/u.test(key)) return text;
     let out = cache.get(key);
     if (out === undefined) {
@@ -143,10 +151,13 @@
   const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'];
   const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'CODE', 'PRE', 'NOSCRIPT']);
   const skipEl = (el) => !el || SKIP.has(el.tagName) || el.isContentEditable || el.closest?.('[data-i18n-skip], .fx-layer');
+  // Cabecera del calendario: letras de los días (L M X J V S D).
+  const DOW = { L: 'M', M: 'T', X: 'W', J: 'T', V: 'F', S: 'S', D: 'S' };
   function doText(node) {
     const p = node.parentElement;
     if (skipEl(p)) return;
     const v = node.data;
+    if (p.classList?.contains('mcal-dow')) { const k = v.trim(); if (DOW[k] && DOW[k] !== k) node.data = DOW[k]; return; }
     const next = tr(v);
     if (next !== v) node.data = next;
   }
