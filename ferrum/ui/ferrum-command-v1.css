@@ -1,0 +1,358 @@
+/* Ferrum Command · capa visual inspirada en el sistema de Raycast
+   (refero: «Midnight command center, coral neon»). Solo presentación.
+   Se activa con html[data-fui-skin="command"] y respeta el tema de Ajustes:
+   - oscuro: grafito (no negro puro), superficies que suben de escalón en
+     escalón, bordes finos con brillo interior («tecla de teclado»);
+   - claro: el mismo sistema en papel gris claro, con tarjetas blancas.
+   Botones neutros (sin color) y un único acento coral reservado a la marca
+   y a lo activo; verde solo para series hechas. */
+
+@font-face { font-family: "Inter"; src: url("../fonts/inter-latin-wght.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Geist Mono"; src: url("../fonts/geist-mono-latin-400.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Geist Mono"; src: url("../fonts/geist-mono-latin-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+
+/* --- tokens ------------------------------------------------------------ */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] {
+  --c-coral: #ff6363;
+  --c-mono: "Geist Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --font-title: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --fui-radius: 16px;
+  font-feature-settings: "calt", "kern", "liga", "ss03";
+}
+html[data-ferrum-ui][data-theme="dark"][data-fui-skin="command"] {
+  --k-canvas: #17181b;
+  --k-card: #1f2023;
+  --k-card-2: #26272b;
+  --k-well: rgba(255, 255, 255, .055);
+  --k-badge: #303135;
+  --k-hair: rgba(255, 255, 255, .07);
+  --k-edge: #3a3b3e;
+  --k-ring: #36373a;
+  --k-text: #ffffff;
+  --k-text-2: #a4a5a7;
+  --k-text-3: #76777a;
+  --k-key: inset 0 1px 0 rgba(255, 255, 255, .06), 0 0 0 1px rgba(255, 255, 255, .08), inset 0 -1px 0 rgba(0, 0, 0, .25);
+  --k-key-hi: inset 0 1px 0 rgba(255, 255, 255, .1), 0 0 0 1px rgba(255, 255, 255, .13), inset 0 -1px 0 rgba(0, 0, 0, .3);
+  --k-btn: #e6e6e6;
+  --k-btn-fg: #2b2c2d;
+  --k-btn-shadow: 0 4px 4px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .6);
+  --k-ghost: rgba(255, 255, 255, .035);
+  --k-ghost-fg: #e6e6e6;
+  --k-glass: rgba(31, 32, 35, .97);
+  --k-glass-shadow: 0 4px 40px 8px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .07);
+  --k-pill: rgba(255, 255, 255, .08);
+  --k-done-wash: rgba(89, 212, 153, .11);
+  --k-done-ring: rgba(89, 212, 153, .2);
+  --k-done-text: #59d499;
+  --k-done-btn: #59d499;
+  --k-done-btn-fg: #0d1f17;
+  --k-ember: #452324;
+  --k-ember-fg: #ff7a7a;
+  --k-toast: #e6e6e6;
+  --k-toast-fg: #1b1c1e;
+}
+html[data-ferrum-ui][data-theme="light"][data-fui-skin="command"] {
+  --k-canvas: #f3f3f4;
+  --k-card: #ffffff;
+  --k-card-2: #f7f7f8;
+  --k-well: rgba(17, 18, 20, .045);
+  --k-badge: #ececee;
+  --k-hair: rgba(17, 18, 20, .08);
+  --k-edge: #dcdcde;
+  --k-ring: #d6d6d9;
+  --k-text: #111214;
+  --k-text-2: #5c5d60;
+  --k-text-3: #8a8b8e;
+  --k-key: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 0 1px rgba(17, 18, 20, .07), 0 1px 2px rgba(17, 18, 20, .04);
+  --k-key-hi: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 0 1px rgba(17, 18, 20, .09), 0 2px 8px rgba(17, 18, 20, .05);
+  --k-btn: #111214;
+  --k-btn-fg: #ffffff;
+  --k-btn-shadow: 0 4px 6px rgba(17, 18, 20, .14), inset 0 1px 0 rgba(255, 255, 255, .12);
+  --k-ghost: #ffffff;
+  --k-ghost-fg: #111214;
+  --k-glass: rgba(255, 255, 255, .96);
+  --k-glass-shadow: 0 6px 30px rgba(17, 18, 20, .1), inset 0 1px 0 rgba(255, 255, 255, .9);
+  --k-pill: rgba(17, 18, 20, .06);
+  --k-done-wash: rgba(89, 212, 153, .16);
+  --k-done-ring: rgba(24, 160, 98, .22);
+  --k-done-text: #12854f;
+  --k-done-btn: #22b06e;
+  --k-done-btn-fg: #ffffff;
+  --k-ember: #ffe4e2;
+  --k-ember-fg: #e0454a;
+  --k-toast: #111214;
+  --k-toast-fg: #ffffff;
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] {
+  --bg: var(--k-canvas);
+  --surface: var(--k-card);
+  --surface-2: var(--k-card-2);
+  --line: var(--k-hair);
+  --border: var(--k-hair);
+  --text: var(--k-text);
+  --sub: var(--k-text-2);
+  --muted: var(--k-text-3);
+  --input-bg: var(--k-well);
+  --blue: var(--c-coral);
+  --green: var(--k-done-text);
+  --red: var(--c-coral);
+  --card-shadow: var(--k-key);
+  --fui-accent-soft: var(--k-ember);
+  --fui-accent-text: var(--k-ember-fg);
+  --fui-success-soft: var(--k-done-wash);
+  --fui-hero: #16171a;
+  --fui-hero-text: #ffffff;
+  --fui-nav: var(--k-glass);
+  --fui-canvas-tint: var(--k-canvas);
+  background: var(--k-canvas);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] body {
+  background: var(--k-canvas); color: var(--k-text); font-family: var(--font-body);
+  letter-spacing: .005em; -webkit-font-smoothing: antialiased;
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] body::before { display: none; }
+
+/* --- tipografía -------------------------------------------------------- */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #ferrum-version {
+  font-family: var(--c-mono); font-size: 10px; letter-spacing: .05em; color: var(--k-text-3); opacity: 1;
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .screen-head h1 {
+  font-family: var(--font-title); font-size: 34px; font-weight: 500; letter-spacing: .004em; line-height: 1.12; color: var(--k-text);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .screen-head p { color: var(--k-text-3); font-size: 14px; letter-spacing: .01em; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-brand span:not(.fui-date) {
+  font-family: var(--font-title); font-size: 13px; font-weight: 600; letter-spacing: .28em; color: var(--k-text);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-brand svg { color: var(--c-coral); filter: drop-shadow(0 0 10px rgba(255, 99, 99, .4)); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-date {
+  font-family: var(--c-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--k-text-3);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(.sec-title, .fui-hero-eyebrow, .set-table thead th, .kpi .kpi-lab, .rt-label, .yo-label) {
+  font-family: var(--c-mono); font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--k-text-3);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(h2, h3, .fui-section-head h2, .am-h2) { font-weight: 500; letter-spacing: .004em; color: var(--k-text); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .muted { color: var(--k-text-3); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(.num, input) { font-variant-numeric: tabular-nums; }
+
+/* --- superficies ------------------------------------------------------- */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .card {
+  background: var(--k-card); border: 0; border-radius: 16px; box-shadow: var(--k-key);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .card .card { background: var(--k-card-2); }
+
+/* hero de Entrenar: el único momento «cinemático» del sistema, oscuro en
+   los dos temas */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero {
+  position: relative; isolation: isolate; overflow: hidden;
+  background: #121316; color: #fff; border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 0 0 1px rgba(255, 255, 255, .1), 0 10px 30px rgba(0, 0, 0, .18);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(120% 80% at 85% -10%, rgba(4, 63, 150, .75), rgba(6, 18, 37, .25) 55%, transparent 75%),
+    radial-gradient(60% 45% at 10% 8%, rgba(255, 99, 99, .34), transparent 70%);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  width: 140%; height: 46px; left: -20%; top: 92px; transform: rotate(-14deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 99, 99, .55) 35%, rgba(99, 161, 255, .45) 70%, transparent);
+  filter: blur(34px); opacity: .7;
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero h2 { font-size: 30px; font-weight: 500; letter-spacing: .004em; color: #fff; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero p { color: #a4a5a7; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero .fui-hero-eyebrow { color: rgba(255, 255, 255, .55); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero .fui-hero-art { display: none; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-quick-routine {
+  background: rgba(22, 23, 26, .62); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 0 0 1px rgba(255, 255, 255, .08);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-quick-routine :is(strong, b) { font-weight: 500; color: #fff; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-quick-routine :is(.muted, small) { color: #8c8d90; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero .fui-routine-list button.fui-routine-start.btn:not(.secondary) {
+  background: #e6e6e6; color: #2b2c2d; border-radius: 8px; min-height: 40px; padding: 8px 14px; font-weight: 500;
+  box-shadow: 0 4px 4px rgba(0, 0, 0, .25), inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero .btn.secondary { background: rgba(255, 255, 255, .04); color: #e6e6e6; box-shadow: inset 0 0 0 1px #36373a; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-home-secondary .btn { padding: 10px 16px; }
+
+/* --- botones ----------------------------------------------------------- */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] button.btn {
+  background: var(--k-btn); color: var(--k-btn-fg); border: 0; border-radius: 10px;
+  font-family: var(--font-body); font-weight: 500; letter-spacing: .01em; box-shadow: var(--k-btn-shadow);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] button.btn:not(.secondary):not(.danger):not(.add-set) { color: var(--k-btn-fg); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] button.btn.small { border-radius: 8px; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(button.btn.secondary, button.btn.add-set, .add-set) {
+  background: var(--k-ghost); color: var(--k-ghost-fg); box-shadow: inset 0 0 0 1px var(--k-ring); border-radius: 10px;
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] button.btn.danger { background: transparent; color: var(--c-coral); box-shadow: inset 0 0 0 1px rgba(255, 99, 99, .35); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .icon-btn { color: var(--k-text-2); border-radius: 8px; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .linklike { color: var(--k-text-2); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(button, a, input, select, textarea):focus-visible { outline: 2px solid var(--k-text-3); outline-offset: 2px; }
+
+/* --- campos ------------------------------------------------------------ */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(input[type="text"], input[type="number"], input[type="search"], select, textarea) {
+  background: var(--k-well); border: 0; border-radius: 8px; color: var(--k-text); box-shadow: inset 0 0 0 1px var(--k-hair);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] ::placeholder { color: var(--k-text-3); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .flt { background: var(--k-well); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--k-hair); }
+
+/* --- barra de pestañas: cristal flotante ------------------------------ */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] nav.tabbar {
+  background: var(--k-glass); backdrop-filter: blur(48px) saturate(140%); -webkit-backdrop-filter: blur(48px) saturate(140%);
+  border: 1px solid var(--k-edge); border-radius: 22px; box-shadow: var(--k-glass-shadow);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] nav.tabbar a { color: var(--k-text-3); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] nav.tabbar a.active { color: var(--k-text); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] nav.tabbar a.active svg { color: var(--c-coral); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] nav.tabbar .pill { background: var(--k-pill); box-shadow: inset 0 0 0 1px var(--k-hair); border-radius: 16px; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-nav-label { font-size: 11px; font-weight: 500; letter-spacing: .02em; }
+
+/* --- calendario -------------------------------------------------------- */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .mcal-head strong { font-weight: 500; text-transform: capitalize; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .mcal-dow { font-family: var(--c-mono); font-size: 10px; color: var(--k-text-3); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .mcal-day { font-variant-numeric: tabular-nums; color: var(--k-text-2); border-radius: 8px; }
+
+/* --- sesión activa ----------------------------------------------------- */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .w-head .w-title { font-size: 24px; font-weight: 500; letter-spacing: .004em; background: transparent; box-shadow: none; padding-left: 0; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #sess-clock { font-family: var(--c-mono); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .ex-meta strong { font-weight: 500; letter-spacing: .004em; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .ex-thumb { border-radius: 12px; box-shadow: 0 0 0 1px var(--k-hair); background: #16171a; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-ex-toolbar { background: var(--k-well); border-radius: 10px; box-shadow: inset 0 0 0 1px var(--k-hair); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-ex-toolbar .ex-tool + .ex-tool { border-left-color: var(--k-hair); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy thead th { border-bottom-color: var(--k-hair); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy tr.set-prevrow td { border-bottom-color: var(--k-hair); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy .set-num {
+  font-family: var(--c-mono); font-weight: 500; background: var(--k-badge); color: var(--k-text); border-radius: 6px;
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy tr.set-done .set-num { background: var(--k-done-wash); color: var(--k-done-text); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy .set-type-btn { background: transparent; color: var(--k-text-2); box-shadow: inset 0 0 0 1px var(--k-ring); border-radius: 6px; font-weight: 500; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy td input {
+  background: var(--k-well); border: 0; box-shadow: inset 0 0 0 1px var(--k-hair); border-radius: 8px;
+  color: var(--k-text); font-family: var(--font-body); font-weight: 600; font-size: 19px;
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy tr.set-done td input { background: var(--k-done-wash); box-shadow: inset 0 0 0 1px var(--k-done-ring); color: var(--k-done-text); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy .check-btn { background: var(--k-ghost); border: 0; box-shadow: inset 0 0 0 1px var(--k-ring); border-radius: 8px; color: transparent; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy .check-btn.done { background: var(--k-done-btn); box-shadow: 0 0 18px rgba(89, 212, 153, .3); color: var(--k-done-btn-fg); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-prev { font-family: var(--c-mono); font-size: 11px; color: var(--k-text-3); letter-spacing: .02em; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .rest-row { color: var(--k-text-2); border-top-color: var(--k-hair); }
+
+/* barra de descanso: el «badge» coral del sistema */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer {
+  background: var(--k-card); backdrop-filter: blur(48px); -webkit-backdrop-filter: blur(48px);
+  border: 1px solid var(--k-edge); border-radius: 16px; box-shadow: var(--k-glass-shadow);
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer .rt-label { color: var(--c-coral); display: inline-flex; align-items: center; gap: 7px; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer .rt-label::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c-coral); box-shadow: 0 0 10px var(--c-coral); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer .rt-time { font-family: var(--c-mono); font-weight: 500; letter-spacing: -.04em; color: var(--k-text); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer .rt-btn { background: var(--k-ghost); color: var(--k-ghost-fg); border: 0; box-shadow: inset 0 0 0 1px var(--k-ring); border-radius: 8px; font-family: var(--c-mono); font-weight: 500; }
+
+/* --- rutinas ----------------------------------------------------------- */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .rt-name { font-weight: 500; font-size: 22px; letter-spacing: .004em; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .rt-zone { background: var(--k-ember); color: var(--k-ember-fg); border-radius: 99999px; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(.rt-cell img, .rt-cell-ph) { border-radius: 12px; border: 0; box-shadow: 0 0 0 1px var(--k-hair); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .rt-cell-name { color: var(--k-text-2); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .rt-actions { border-top-color: var(--k-hair); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .rt-actions button { color: var(--k-text-2); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .rt-actions button + button { border-left-color: var(--k-hair); }
+
+/* --- actividad, modales, avisos --------------------------------------- */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-avatar { background: var(--k-badge); color: var(--k-text); font-weight: 500; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-feed-metrics > div { background: var(--k-well); border-radius: 10px; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .kpi { background: var(--k-well); box-shadow: inset 0 0 0 1px var(--k-hair); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .toast { background: var(--k-toast); color: var(--k-toast-fg); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .modal { background: var(--k-card); box-shadow: var(--k-key-hi); border: 0; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .modal-overlay { background: rgba(0, 0, 0, .45); }
+
+/* ======================================================================
+   Movimiento (con ui/ferrum-command-motion-v1.js). Lenguaje GSAP: salidas
+   expo.out, rebotes back.out y elásticos, trazos en degradado que giran y
+   destellos de color. Solo transform/opacity/filter: fluido en el móvil.
+   ====================================================================== */
+@property --fx-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes fx-spin { to { --fx-a: 360deg; } }
+@keyframes fx-drift {
+  0% { transform: rotate(-14deg) translate3d(-6%, 0, 0); opacity: .55; }
+  100% { transform: rotate(-8deg) translate3d(8%, 26px, 0); opacity: .85; }
+}
+@keyframes fx-breathe { from { opacity: .78; } to { opacity: 1; } }
+@keyframes fx-final { 0%, 100% { scale: 1; } 40% { scale: 1.12; } }
+@keyframes fx-toast { from { opacity: 0; translate: 0 18px; scale: .9; } to { opacity: 1; translate: 0 0; scale: 1; } }
+@keyframes fx-glowpulse { 0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 99, 99, .35)); } 50% { filter: drop-shadow(0 0 12px rgba(255, 99, 99, .7)); } }
+
+html[data-fui-skin="command"] { --m-out: cubic-bezier(.16, 1, .3, 1); --m-back: cubic-bezier(.34, 1.56, .64, 1); }
+
+/* pulsar: hundimiento rápido, vuelta con muelle */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(button, a[href], summary, [role="button"]) {
+  transition: scale 620ms var(--m-spring, var(--m-back)), background-color 220ms ease, box-shadow 260ms ease, color 200ms ease, opacity 200ms ease;
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-pressed { scale: .95; transition: scale 110ms cubic-bezier(.3, 0, .6, 1); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] button.btn.fui-pressed { box-shadow: 0 0 0 4px rgba(255, 99, 99, .14), var(--k-btn-shadow); }
+
+/* pestañas: la píldora llega con muelle; el icono activo brilla */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] nav.tabbar .pill { transition: transform 680ms var(--m-spring, var(--m-back)), width 680ms var(--m-spring, var(--m-back)); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] nav.tabbar a.active svg { animation: fx-glowpulse 3.2s ease-in-out infinite; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] nav.tabbar a { transition: color 260ms ease, scale 620ms var(--m-spring, var(--m-back)); }
+
+/* títulos que suben palabra a palabra */
+html[data-fui-skin="command"] .fx-w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .14em; margin-bottom: -.14em; }
+html[data-fui-skin="command"] .fx-wi { display: inline-block; will-change: transform; }
+
+/* hero vivo: el degradado deriva y respira */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero::after { animation: fx-drift 9s ease-in-out infinite alternate; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-routine-hero::before { animation: fx-breathe 6s ease-in-out infinite alternate; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .fui-brand svg { animation: fx-glowpulse 4s ease-in-out infinite; }
+
+/* campos: halo suave al enfocar */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(input, select, textarea) { transition: box-shadow 240ms ease, background-color 240ms ease; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] :is(input, select, textarea):focus { outline: none; box-shadow: inset 0 0 0 1px rgba(255, 99, 99, .55), 0 0 0 4px rgba(255, 99, 99, .14), 0 0 22px rgba(255, 99, 99, .12); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .set-table.roomy td input:focus { box-shadow: inset 0 0 0 1px rgba(255, 99, 99, .55), 0 0 0 4px rgba(255, 99, 99, .14); }
+
+/* descanso: borde en degradado que gira + barra de progreso */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer { overflow: visible; isolation: isolate; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none; z-index: -1;
+  background: conic-gradient(from var(--fx-a), #ff6363, #fec5fb 25%, #9d95ff 45%, transparent 60%, transparent 80%, #ff6363);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  animation: fx-spin 3.6s linear infinite;
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer::after {
+  content: ""; position: absolute; left: 16px; right: 16px; bottom: 4px; height: 2px; border-radius: 2px; pointer-events: none;
+  background: linear-gradient(90deg, #ff6363, #fec5fb); box-shadow: 0 0 8px rgba(255, 99, 99, .6);
+  transform-origin: left center; transform: scaleX(var(--fx-p, 0));
+}
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer.fx-final .rt-time { color: var(--c-coral); animation: fx-final 1s ease-in-out infinite; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer.done::before { background: conic-gradient(from var(--fx-a), #0ae448, #abff84 30%, transparent 60%, #0ae448); animation-duration: 1.4s; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer.done::after { background: linear-gradient(90deg, #0ae448, #abff84); box-shadow: 0 0 10px rgba(10, 228, 72, .6); transform: scaleX(1); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer.done .rt-time { color: var(--k-done-text); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer.done .rt-label { color: var(--k-done-text); }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] #rest-timer.done .rt-label::before { background: #0ae448; box-shadow: 0 0 10px #0ae448; }
+
+/* avisos y hojas */
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .toast.show { animation: fx-toast 560ms var(--m-back) both; }
+html[data-ferrum-ui][data-theme][data-fui-skin="command"] .modal-overlay { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+/* capa de efectos */
+html[data-fui-skin="command"] .fx-layer { position: fixed; inset: 0; pointer-events: none; z-index: 9000; overflow: hidden; contain: strict; }
+html[data-fui-skin="command"] .fx-box { position: absolute; pointer-events: none; }
+html[data-fui-skin="command"] .fx-glow { position: absolute; border-radius: 50%; will-change: transform, opacity; }
+html[data-fui-skin="command"] :is(.fx-spark, .fx-confetti) { position: absolute; display: block; will-change: transform, opacity; }
+html[data-fui-skin="command"] .fx-spark { border-radius: 50%; }
+html[data-fui-skin="command"] .fx-ring { box-shadow: 0 0 0 2px var(--fx-ring), 0 0 22px var(--fx-ring); }
+html[data-fui-skin="command"] .fx-sheen { position: absolute; top: -10%; bottom: -10%; left: 0; width: 38%; background: linear-gradient(90deg, transparent, rgba(171, 255, 132, .26), rgba(255, 255, 255, .18), transparent); }
+html[data-fui-skin="command"] .fx-stroke {
+  padding: 1.5px;
+  background: conic-gradient(from var(--fx-a), #0ae448, #abff84, #00bae2, #9d95ff, #fec5fb, #ff8709, #0ae448);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
+  animation: fx-spin 1.7s linear;
+}
+html[data-fui-skin="command"] .fx-halo { box-shadow: 0 0 0 1px rgba(171, 255, 132, .35), 0 0 34px rgba(10, 228, 72, .32); }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-fui-skin="command"] *, html[data-fui-skin="command"] *::before, html[data-fui-skin="command"] *::after { animation: none !important; transition-duration: 0ms !important; }
+  html[data-fui-skin="command"] .fx-layer { display: none; }
+}
