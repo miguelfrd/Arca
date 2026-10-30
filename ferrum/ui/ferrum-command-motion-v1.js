@@ -32,6 +32,14 @@
   const GREEN = ['#0ae448', '#abff84', '#59d499', '#e9ffd9'];
   const GSAP = ['#0ae448', '#abff84', '#ff8709', '#fec5fb', '#9d95ff', '#00bae2'];
 
+  // Colores de la paleta activa (Grafito / Rosa), definidos en el CSS.
+  const cssList = (name, fb) => {
+    try {
+      const v = getComputedStyle(root).getPropertyValue(name).trim();
+      return v ? v.split(',').map((x) => x.trim()).filter(Boolean) : fb;
+    } catch { return fb; }
+  };
+  const cssVar = (name, fb) => { try { return getComputedStyle(root).getPropertyValue(name).trim() || fb; } catch { return fb; } };
   const safe = (fn) => (...a) => { try { return fn(...a); } catch { /* nunca romper la app */ } };
   const anim = (el, frames, opts) => { try { return el.animate(frames, opts); } catch { return null; } };
   const dark = () => root.dataset.theme !== 'light';
@@ -65,7 +73,20 @@
 
   // --- 1. Brillo al pulsar, desde el punto exacto del dedo ---------------
   const PRESSABLE = 'button:not(:disabled), a[href], summary, [role="button"], .card[data-act], .mcal-day';
-  const glowAt = safe((el, x, y) => {
+  // El brillo vive en la capa fija, así que debe seguir al botón y
+  // desaparecer en cuanto el toque se convierte en scroll: si no, se queda
+  // flotando en la pantalla mientras el botón se desplaza.
+  let live = null; // { el, b, a, raf }
+  const killGlow = (fast = true) => {
+    const g = live; live = null;
+    if (!g) return;
+    cancelAnimationFrame(g.raf);
+    if (!fast) return;
+    try { g.a?.cancel(); } catch { /* noop */ }
+    const out = anim(g.b, [{ opacity: 1 }, { opacity: 0 }], { duration: 120, easing: 'ease-out', fill: 'forwards' });
+    done(out, g.b);
+  };
+  const glowAt = safe((el, x, y, tint0) => {
     const r = el.getBoundingClientRect();
     if (r.width < 8 || r.height < 8) return;
     const cs = getComputedStyle(el);
@@ -76,16 +97,48 @@
     const g = document.createElement('span');
     g.className = 'fx-glow';
     const size = Math.max(r.width, r.height) * 2.2;
-    const tint = el.closest('nav.tabbar') ? 'rgba(255, 99, 99, .32)' : lightBg ? 'rgba(17, 18, 20, .16)' : 'rgba(255, 255, 255, .22)';
+    const tint = tint0 || (el.closest('nav.tabbar') ? 'var(--fx-tab-glow, rgba(255, 99, 99, .32))' : lightBg ? 'rgba(17, 18, 20, .16)' : 'rgba(255, 255, 255, .22)');
     Object.assign(g.style, { left: `${x - r.left - size / 2}px`, top: `${y - r.top - size / 2}px`, width: `${size}px`, height: `${size}px`, background: `radial-gradient(circle, ${tint} 0%, transparent 62%)` });
     b.appendChild(g);
-    done(anim(g, [{ transform: 'scale(.08)', opacity: 1 }, { transform: 'scale(1)', opacity: 0 }], { duration: 640, easing: EXPO, fill: 'forwards' }), b);
+    const a = anim(g, [{ transform: 'scale(.08)', opacity: 1 }, { transform: 'scale(1)', opacity: 0 }], { duration: 640, easing: EXPO, fill: 'forwards' });
+    const entry = { el, b, a, raf: 0, x, y };
+    // pegado al botón mientras dura (por si la página se mueve un poco)
+    const follow = () => {
+      if (live !== entry) return;
+      if (!el.isConnected) { killGlow(); return; }
+      const q = el.getBoundingClientRect();
+      b.style.left = `${q.left}px`; b.style.top = `${q.top}px`;
+      entry.raf = requestAnimationFrame(follow);
+    };
+    killGlow();
+    live = entry;
+    entry.raf = requestAnimationFrame(follow);
+    if (a) a.onfinish = () => { if (live === entry) { live = null; cancelAnimationFrame(entry.raf); } b.remove(); };
+    else setTimeout(() => b.remove(), 900);
   });
+  // Un toque se confirma tras 70 ms sin moverse: así un gesto de scroll que
+  // empieza encima de un botón no llega a pintar nada.
+  let pending = null;
+  const cancelPending = () => { if (pending) { clearTimeout(pending.t); pending = null; } };
   document.addEventListener('pointerdown', (e) => {
     if (off() || e.button > 0) return;
     const el = e.target.closest?.(PRESSABLE);
-    if (el && !el.closest('.fx-layer')) glowAt(el, e.clientX, e.clientY);
+    if (!el || el.closest('.fx-layer')) return;
+    cancelPending();
+    const p = { x: e.clientX, y: e.clientY, el, t: 0 };
+    p.t = setTimeout(() => { if (pending === p) { pending = null; glowAt(el, p.x, p.y); } }, 70);
+    pending = p;
   }, { passive: true });
+  document.addEventListener('pointermove', (e) => {
+    const p = pending;
+    if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) cancelPending();
+    if (live && e.buttons && Math.hypot(e.clientX - live.x, e.clientY - live.y) > 10) killGlow();
+  }, { passive: true });
+  // pointerup antes de 70 ms (toque rápido): el brillo sale igualmente
+  document.addEventListener('pointerup', () => { const p = pending; if (p) { cancelPending(); glowAt(p.el, p.x, p.y); } }, { passive: true });
+  document.addEventListener('pointercancel', () => { cancelPending(); killGlow(); }, { passive: true });
+  document.addEventListener('scroll', () => { cancelPending(); killGlow(); }, { passive: true, capture: true });
+  window.addEventListener('blur', () => { cancelPending(); killGlow(); });
 
   // --- 2. Serie hecha: rebote, onda expansiva y chispas verdes -------------
   const sparks = safe((cx, cy, colors, n = 12, dist = [26, 58], size = [4, 7]) => {
@@ -134,8 +187,8 @@
     const r = btn.getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     anim(btn, [{ transform: 'scale(.62)' }, { transform: 'scale(1.16)', offset: .45 }, { transform: 'scale(1)' }], { duration: 560, easing: 'cubic-bezier(.2, .9, .3, 1)' });
-    shockwave(r, getComputedStyle(btn).borderRadius, '#59d499');
-    sparks(cx, cy, GREEN, 12);
+    shockwave(r, getComputedStyle(btn).borderRadius, cssVar('--fx-done-a', '#59d499'));
+    sparks(cx, cy, cssList('--fx-sparks', GREEN), 12);
     const row = btn.closest('tr');
     if (row) sheen(row.getBoundingClientRect());
     try { navigator.vibrate?.(14); } catch { /* noop */ }
@@ -144,7 +197,7 @@
       setTimeout(() => {
         strokeGlow(card);
         const cr = card.getBoundingClientRect();
-        sparks(cr.left + cr.width / 2, Math.max(40, cr.top + 40), GSAP, 22, [50, 130], [5, 9]);
+        sparks(cr.left + cr.width / 2, Math.max(40, cr.top + 40), cssList('--fx-confetti', GSAP), 22, [50, 130], [5, 9]);
       }, 160);
     }
   });
@@ -234,11 +287,11 @@
         if (now === prev) return;
         prev = now;
         if (off()) return;
-        if (now === '¡Listo!') {
+        if (now === '¡Listo!' || now === 'Done!' || now === 'Ready!') {
           const r = el.getBoundingClientRect();
           anim(el, [{ transform: 'translate(-50%, 0) scale(1)' }, { transform: 'translate(-50%, 0) scale(1.06)', offset: .35 }, { transform: 'translate(-50%, 0) scale(1)' }], { duration: 640, easing: BACK });
-          shockwave(r, getComputedStyle(el).borderRadius, '#0ae448');
-          sparks(r.left + r.width * .3, r.top + r.height / 2, GREEN, 16, [30, 90]);
+          shockwave(r, getComputedStyle(el).borderRadius, cssVar('--fx-done-a', '#0ae448'));
+          sparks(r.left + r.width * .3, r.top + r.height / 2, cssList('--fx-sparks', GREEN), 16, [30, 90]);
           return;
         }
         anim(t, [{ transform: 'translateY(-38%)', opacity: .25, filter: 'blur(2px)' }, { transform: 'none', opacity: 1, filter: 'blur(0)' }], { duration: 300, easing: EXPO });
@@ -249,10 +302,10 @@
   // --- 5. Modales, avisos y fin de entrenamiento --------------------------
   const countUp = safe((el) => {
     const txt = el.textContent.trim();
-    if (!/^\d[\d.]*$/.test(txt)) return;
-    const target = Number(txt.replace(/\./g, ''));
+    if (!/^\d[\d.,]*$/.test(txt) || /[.,]\d{1,2}$/.test(txt)) return;
+    const target = Number(txt.replace(/[.,]/g, ''));
     if (!Number.isFinite(target) || target <= 0) return;
-    const fmt = new Intl.NumberFormat('es-ES');
+    const fmt = new Intl.NumberFormat(root.lang === 'en' ? 'en-GB' : 'es-ES');
     const t0 = performance.now(), dur = 1100;
     const step = (now) => {
       const k = Math.min(1, (now - t0) / dur);
@@ -265,10 +318,11 @@
   const confetti = safe(() => {
     const L = fxLayer();
     const W = innerWidth;
+    const palette = cssList('--fx-confetti', GSAP);
     for (let i = 0; i < 70; i++) {
       const c = document.createElement('i');
       c.className = 'fx-confetti';
-      const col = GSAP[i % GSAP.length];
+      const col = palette[i % palette.length];
       const w = 6 + Math.random() * 6, h = w * (Math.random() < .5 ? .45 : 1);
       Object.assign(c.style, { left: `${W / 2}px`, top: `${innerHeight * .32}px`, width: `${w}px`, height: `${h}px`, background: col, borderRadius: Math.random() < .35 ? '50%' : '2px' });
       L.appendChild(c);
@@ -289,7 +343,7 @@
     anim(ov, [{ opacity: 0 }, { opacity: 1 }], { duration: 260, easing: 'ease-out' });
     if (modal) anim(modal, [{ transform: 'translateY(60px)', opacity: .4 }, { transform: 'none', opacity: 1 }], { duration: 720, easing: SPRING === BACK ? EXPO : SPRING });
     const title = modal?.querySelector('h3');
-    if (title && /completada/i.test(title.textContent)) {
+    if (title && /completada|complete/i.test(title.textContent)) {
       setTimeout(confetti, 180);
       modal.querySelectorAll('.kpi').forEach((k, i) => {
         anim(k, [{ opacity: 0, transform: 'translateY(16px) scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: 700, delay: 200 + i * 80, easing: BACK, fill: 'backwards' });
@@ -314,9 +368,9 @@
     if (rt) wireRest(rt);
     // tema → color de la barra de estado
     const meta = document.querySelector('meta[name="theme-color"]');
-    const paint = () => meta?.setAttribute('content', dark() ? '#17181b' : '#f3f3f4');
+    const paint = () => meta?.setAttribute('content', cssVar('--k-canvas', dark() ? '#17181b' : '#f3f3f4'));
     paint();
-    new MutationObserver(paint).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    new MutationObserver(paint).observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-fui-palette'] });
     onRoute();
   });
   if (document.body) start(); else document.addEventListener('DOMContentLoaded', start, { once: true });

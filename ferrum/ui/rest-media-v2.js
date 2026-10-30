@@ -150,6 +150,10 @@ async function renderArt(info) {
   return artUrl;
 }
 
+// Textos en el idioma elegido (ui/ferrum-i18n-v1.js); sin él, tal cual.
+const tr = (x) => { try { return window.__ferrumI18n?.t ? window.__ferrumI18n.t(x) : x; } catch { return x; } };
+const translated = (info) => info && ({ ...info, title: tr(info.title), sub: tr(info.sub), big: tr(info.big), small: tr(info.small) });
+
 function remote(detail) {
   try { window.dispatchEvent(new CustomEvent('ferrum:rest-remote', { detail })); } catch { /* noop */ }
 }
@@ -160,9 +164,9 @@ function setupSession(endsAt, duration, position, info, mine) {
   const meta = (art) => {
     try {
       ms.metadata = new window.MediaMetadata({
-        title: info?.title || 'Descanso',
+        title: info?.title || tr('Descanso'),
         artist: info?.sub || 'Ferrum',
-        album: `Descanso · termina a las ${clock(endsAt)}`,
+        album: tr(`Descanso · termina a las ${clock(endsAt)}`),
         artwork: art ? [{ src: art, sizes: '512x512', type: 'image/png' }] : [iconArt(192), iconArt(512)],
       });
     } catch { /* MediaMetadata no disponible */ }
@@ -205,7 +209,8 @@ function audioSessionType(type) {
   try { if (navigator.audioSession && navigator.audioSession.type !== type) navigator.audioSession.type = type; } catch { /* noop */ }
 }
 
-function start({ endsAt, token, sound, card, info }) {
+function start({ endsAt, token, sound, card, info: rawInfo }) {
+  const info = translated(rawInfo);
   if (!card) { release(); audioSessionType('ambient'); return; }
   if (!sound || !token) { release(); return; }
   audioSessionType('auto');
