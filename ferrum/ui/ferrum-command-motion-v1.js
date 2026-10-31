@@ -189,7 +189,7 @@
     anim(btn, [{ transform: 'scale(.62)' }, { transform: 'scale(1.16)', offset: .45 }, { transform: 'scale(1)' }], { duration: 560, easing: 'cubic-bezier(.2, .9, .3, 1)' });
     shockwave(r, getComputedStyle(btn).borderRadius, cssVar('--fx-done-a', '#59d499'));
     sparks(cx, cy, cssList('--fx-sparks', GREEN), 12);
-    const row = btn.closest('tr');
+    const row = btn.closest('.set-wrap, tr');
     if (row) sheen(row.getBoundingClientRect());
     try { navigator.vibrate?.(14); } catch { /* noop */ }
     const card = btn.closest('.ex-card');
@@ -305,7 +305,7 @@
     if (!/^\d[\d.,]*$/.test(txt) || /[.,]\d{1,2}$/.test(txt)) return;
     const target = Number(txt.replace(/[.,]/g, ''));
     if (!Number.isFinite(target) || target <= 0) return;
-    const fmt = new Intl.NumberFormat(root.lang === 'en' ? 'en-GB' : 'es-ES');
+    const fmt = new Intl.NumberFormat(root.lang === 'en' ? 'en-GB' : 'es-ES', { useGrouping: 'always' });
     const t0 = performance.now(), dur = 1100;
     const step = (now) => {
       const k = Math.min(1, (now - t0) / dur);

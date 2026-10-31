@@ -1,14 +1,15 @@
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, x => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[x]));
-const compactNumber = value => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 }).format(value || 0);
+const compactNumber = value => new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1, useGrouping: 'always' }).format(value || 0);
 const duration = post => { const minutes = Math.max(0, Math.round((post.endTime - post.startTime) / 60000)); return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h ${minutes % 60} min`; };
 export function postCard(post, { own = false } = {}) {
   const person = post.author?.nickname || 'Tú';
   const date = new Date(post.endTime).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-  return `<article class="card fui-feed-card" data-post="${escapeHtml(post.id)}">
-    <div class="fui-feed-head"><span class="fui-avatar" aria-hidden="true">${escapeHtml(person.slice(0, 1).toUpperCase())}</span>
-      <div><strong>${escapeHtml(person)}</strong><time datetime="${new Date(post.endTime).toISOString()}">${escapeHtml(date)}</time></div>
-      ${own ? `<button class="icon-btn ghost fui-feed-delete" data-remove-workout="${escapeHtml(post.localId)}" aria-label="Eliminar entrenamiento ${escapeHtml(post.title)}">⋯</button>` : '<span class="fui-private-pill">Amigos</span>'}
-    </div><h3>${escapeHtml(post.title)}</h3>
+  const when = `<time datetime="${new Date(post.endTime).toISOString()}">${escapeHtml(date)}</time>`;
+  return `<article class="card fui-feed-card${own ? ' is-own' : ''}" data-post="${escapeHtml(post.id)}">
+    ${own
+      ? `<div class="fui-feed-own-head"><h3>${escapeHtml(post.title)}</h3>${when}<button class="fui-feed-delete" data-remove-workout="${escapeHtml(post.localId)}" aria-label="Eliminar entrenamiento ${escapeHtml(post.title)}">⋯</button></div>`
+      : `<div class="fui-feed-head"><span class="fui-avatar" aria-hidden="true">${escapeHtml(person.slice(0, 1).toUpperCase())}</span>
+      <div><strong>${escapeHtml(person)}</strong>${when}</div></div><h3>${escapeHtml(post.title)}</h3>`}
     ${post.hasPhoto ? `<figure class="fui-feed-photo"><img data-post-photo="${escapeHtml(post.id)}" alt="Foto del entrenamiento de ${escapeHtml(person)}" loading="lazy"/><span class="fui-photo-placeholder" aria-hidden="true">FERRUM</span></figure>` : ''}
     ${post.description ? `<p class="fui-feed-description">${escapeHtml(post.description)}</p>` : ''}
     <div class="fui-feed-metrics">${[[duration(post), 'Duración'], [compactNumber(post.setCount), 'Series'], [compactNumber(post.volumeKg) + ' kg', 'Volumen']].map(([v, l]) => `<div><strong>${escapeHtml(v)}</strong><span>${l}</span></div>`).join('')}</div>

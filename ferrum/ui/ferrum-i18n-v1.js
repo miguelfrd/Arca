@@ -13,11 +13,23 @@
   const root = document.documentElement;
   const read = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const lang = read('ferrum-lang') === 'en' ? 'en' : 'es';
-  const PALETTES = ['grafito', 'rosa', 'azul', 'rojo', 'verde', 'violeta', 'custom'];
-  const palette = PALETTES.includes(read('ferrum-palette')) ? read('ferrum-palette') : 'grafito';
+  const PALETTES = ['cobre', 'grafito', 'rosa', 'azul', 'rojo', 'verde', 'violeta', 'custom'];
+  const palette = PALETTES.includes(read('ferrum-palette')) ? read('ferrum-palette') : 'cobre';
   const hue = Math.max(0, Math.min(360, Number(read('ferrum-hue')) || 255));
+  // Filtro de las ilustraciones para el color Personalizado: valores calculados
+  // cada 30° de tono (hue-rotate, saturate, brightness) e interpolados entre sí.
+  // Ver docs/2026-10-31__recolor-ilustraciones.md.
+  const ICON_TABLE = [[290, 1.76, 1.05], [321, 2.0, 1.06], [346, 2.32, 1.07], [7, 2.32, 1.1], [33, 1.8, 1.13], [81, 1.6, 1.12], [121, 2.44, 1.09], [140, 3.0, 1.07], [161, 2.4, 1.09], [188, 1.92, 1.1], [220, 1.64, 1.09], [255, 1.6, 1.07]];
+  const iconFilter = (h) => {
+    const x = ((Number(h) % 360) + 360) % 360 / 30, i = Math.floor(x) % 12, f = x - Math.floor(x);
+    const a = ICON_TABLE[i], b = ICON_TABLE[(i + 1) % 12];
+    let dh = b[0] - a[0];
+    if (dh > 180) dh -= 360; else if (dh < -180) dh += 360;
+    return `sepia(1) hue-rotate(${((a[0] + dh * f) + 360) % 360}deg) saturate(${(a[1] + (b[1] - a[1]) * f).toFixed(2)}) brightness(${(a[2] + (b[2] - a[2]) * f).toFixed(2)})`;
+  };
+  const applyCustom = (h) => { root.style.setProperty('--p-h', String(h)); root.style.setProperty('--icon-filter', iconFilter(h)); };
   root.dataset.fuiPalette = palette;
-  if (palette === 'custom') root.style.setProperty('--p-h', String(hue));
+  if (palette === 'custom') applyCustom(hue);
   root.lang = lang;
 
   // El service worker traduce el aviso push de fin de descanso.
@@ -41,6 +53,7 @@
     [/^(\d+) semanas?$/, (m, a) => `${a} week${a === '1' ? '' : 's'}`],
     [/^(\d+) entrenamientos?$/, (m, a) => `${a} workout${a === '1' ? '' : 's'}`],
     [/^hace (\d+) (min|h|d)$/i, (m, a, u) => `${a} ${u} ago`],
+    [/^(Última copia|Último intento) (ahora mismo|hace (\d+) (min|h|días?))$/, (m, w, r, n, u) => `${w === 'Última copia' ? 'Last backup' : 'Last attempt'} ${n ? `${n} ${u.startsWith('d') ? (n === '1' ? 'day' : 'days') : u} ago` : 'just now'}`],
     [/^Marcar serie (\d+) como hecha$/, (m, a) => `Mark set ${a} as done`],
     [/^(KG|REPS) serie (\d+)$/, (m, a, b) => `${a} set ${b}`],
     [/^Demasiados intentos\. Espera (\d+) s…$/, (m, a) => `Too many attempts. Wait ${a} s…`],
@@ -49,6 +62,17 @@
     [/^Desmarcar serie (\d+) como hecha$/, (m, a) => `Unmark set ${a} as done`],
     [/^Tipo de serie: (.+)\. Toca para cambiar\.$/, (m, a) => `Set type: ${tr(a)}. Tap to change.`],
     [/^Versión (v\d+)$/, (m, a) => `Version ${a}`],
+    [/^Descanso (\d+:\d+)$/, (m, a) => `Rest ${a}`],
+    [/^Hace (\d+) días$/, (m, a) => `${a} days ago`],
+    [/^(\d+) de (\d+) series$/, (m, a, b) => `${a} of ${b} sets`],
+    [/^(\d+) resultados?$/, (m, a) => `${a} result${a === '1' ? '' : 's'}`],
+    [/^(\d+) días? este mes$/, (m, a) => `${a} day${a === '1' ? '' : 's'} this month`],
+    [/^Empezar (.+)$/, (m, a) => `Start ${a}`],
+    [/^Añadir (\d+) ejercicios?$/, (m, a) => `Add ${a} exercise${a === '1' ? '' : 's'}`],
+    [/^Ver las (\d+) rutinas$/, (m, a) => `See all ${a} routines`],
+    [/^Sesiones en (.+)$/, (m, a) => `Sessions in ${a}`],
+    [/^Últimas 16 semanas · (\d+) días? con entreno$/, (m, a) => `Last 16 weeks · ${a} training day${a === '1' ? '' : 's'}`],
+    [/^(\d+) sesi(?:ón valorada|ones valoradas) · escala de 1 a 5$/, (m, a) => `${a} rated session${a === '1' ? '' : 's'} · scale of 1 to 5`],
     [/^(.+) \((cm|kg|%|s|km)\)$/, (m, a, u) => { const t = translate(a); return t === a ? m : `${t} (${u})`; }],
     [/^Ferrum (v\d+) — tus datos viven solo en este móvil \(IndexedDB\), sin cuentas ni servidores\. Haz copias de seguridad desde el apartado «Copia de seguridad» de esta misma pantalla\.$/,
       (m, a) => `Ferrum ${a} — your data lives only on this phone (IndexedDB), no accounts or servers. Make backups from the «Backup» section on this same screen.`],
@@ -107,16 +131,16 @@
     palettes: PALETTES,
     hue: () => Math.max(0, Math.min(360, Number(read('ferrum-hue')) || 255)),
     setPalette(next) {
-      const p = PALETTES.includes(next) ? next : 'grafito';
+      const p = PALETTES.includes(next) ? next : 'cobre';
       try { localStorage.setItem('ferrum-palette', p); } catch { /* noop */ }
       root.dataset.fuiPalette = p;
-      if (p === 'custom') root.style.setProperty('--p-h', String(api.hue()));
-      else root.style.removeProperty('--p-h');
+      if (p === 'custom') applyCustom(api.hue());
+      else { root.style.removeProperty('--p-h'); root.style.removeProperty('--icon-filter'); }
     },
     setHue(h) {
       const v = Math.round(Math.max(0, Math.min(360, Number(h) || 0)));
       try { localStorage.setItem('ferrum-hue', String(v)); } catch { /* noop */ }
-      root.style.setProperty('--p-h', String(v));
+      applyCustom(v);
     },
   };
   window.__ferrumI18n = api;
@@ -130,11 +154,12 @@
   const skipEl = (el) => !el || SKIP.has(el.tagName) || el.isContentEditable || el.closest?.('[data-i18n-skip], .fx-layer');
   // Cabecera del calendario: letras de los días (L M X J V S D).
   const DOW = { L: 'M', M: 'T', X: 'W', J: 'T', V: 'F', S: 'S', D: 'S' };
+  const dowDone = new WeakSet();
   function doText(node) {
     const p = node.parentElement;
     if (skipEl(p)) return;
     const v = node.data;
-    if (p.classList?.contains('mcal-dow')) { const k = v.trim(); if (DOW[k] && DOW[k] !== k) node.data = DOW[k]; return; }
+    if (p.classList?.contains('mcal-dow')) { const k = v.trim(); if (!dowDone.has(node)) { dowDone.add(node); if (DOW[k] && DOW[k] !== k) node.data = DOW[k]; } return; }
     const next = tr(v);
     if (next !== v) node.data = next;
   }

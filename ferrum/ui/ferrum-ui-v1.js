@@ -42,7 +42,7 @@
   }
   function updateThemeColor() {
     const meta = document.querySelector('meta[name="theme-color"]');
-    const color = root.dataset.theme === "dark" ? "#141713" : "#f6f4ef";
+    const color = root.dataset.theme === "dark" ? "#141713" : "#f6f4ef"; // color de la barra del sistema
     if (meta && meta.content !== color) meta.content = color;
   }
   function reconcile() {
@@ -52,23 +52,6 @@
     const section = route();
     root.dataset.fuiRoute = section;
     updateThemeColor();
-    const head = view.querySelector(".screen-head, .am-head");
-    if (head && !head.querySelector(".fui-brand")) {
-      const brand = create("fui-brand", mark);
-      const name = document.createElement("span");
-      name.textContent = "FERRUM";
-      brand.append(name);
-      const date = document.createElement("span");
-      date.className = "fui-date";
-      date.textContent = new Intl.DateTimeFormat("es-ES", { weekday: "short", day: "numeric", month: "short" }).format(new Date());
-      brand.append(date);
-      head.prepend(brand);
-      if (!head.querySelector("p") && descriptions[section]) {
-        const subtitle = document.createElement("p");
-        subtitle.textContent = descriptions[section];
-        head.append(subtitle);
-      }
-    }
     for (const empty of view.querySelectorAll(".empty:not(.small)")) {
       if (!empty.querySelector(".fui-empty-icon")) {
         empty.classList.add("fui-empty");
@@ -86,17 +69,6 @@
         const isToday = heading.includes(month) && heading.includes(String(today.getFullYear())) && day.textContent.trim() === String(today.getDate());
         day.classList.toggle("fui-today", isToday);
       }
-    }
-    for (const item of view.querySelectorAll(".yo-btn")) {
-      const label = item.querySelector(".yo-label");
-      if (!label || item.querySelector(".fui-yo-copy")) continue;
-      const copy = create("fui-yo-copy");
-      label.before(copy);
-      copy.append(label);
-      const caption = document.createElement("span");
-      caption.className = "fui-yo-caption";
-      caption.textContent = captions[item.getAttribute("href")] || "";
-      copy.append(caption);
     }
     const nav = document.querySelector("nav.tabbar");
     if (nav) {

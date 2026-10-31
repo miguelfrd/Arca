@@ -134,6 +134,7 @@
 
   // --- Color: muestras + selector de tono -----------------------------------
   const SWATCHES = [
+    ['cobre', '#bc4924', t('Cobre', 'Copper')],
     ['grafito', '#2a2b2f', t('Grafito', 'Graphite')],
     ['rosa', '#f0478f', t('Rosa', 'Pink')],
     ['azul', 'oklch(.62 .19 255)', t('Azul', 'Blue')],
@@ -156,7 +157,7 @@
     hueWrap.append(hueInput, hueVal);
     const name = el('div', 'st-color-name');
     const sync = () => {
-      const cur = root.dataset.fuiPalette || 'grafito';
+      const cur = root.dataset.fuiPalette || 'cobre';
       sw.querySelectorAll('button').forEach((b) => { const on = b.dataset.v === cur; b.classList.toggle('on', on); b.setAttribute('aria-checked', String(on)); });
       hueWrap.hidden = cur !== 'custom';
       name.textContent = SWATCHES.find((s) => s[0] === cur)?.[2] || '';
@@ -362,7 +363,7 @@
     const cWipe = sectionOf($('bk-wipe'));
     const cPriv = sectionOf($('s-lock'));
     const cApp = sectionOf($('ck-upd'));
-    const cAbout = [...body.querySelectorAll('.card')].find((c) => /IndexedDB/.test(c.textContent));
+    const cAbout = [...body.querySelectorAll('.card')].find((c) => /IndexedDB|viven en este móvil|lives on this phone/.test(c.textContent));
     const theme = $('s-theme');
     const rowOf = (input) => input?.closest('.row');
 
@@ -398,7 +399,7 @@
     if (cPriv) { const g = group(t('Privacidad', 'Privacy')); g.querySelector('.st-card').append(...cPriv.childNodes); g.querySelector('.st-card').classList.add('st-legacy-card'); out.append(g); titleBefore(cPriv)?.remove(); cPriv.remove(); }
 
     // Datos y copias → subpantalla
-    const dataParts = [cJson, cAuto, cCsv, cWipe].filter(Boolean).map(take);
+    const dataParts = [...new Set([cJson, cAuto, cCsv, cWipe].filter(Boolean))].map(take);
     const holder = el('div', 'st-hold'); holder.hidden = true;
     for (const p of dataParts) { if (p.title) holder.append(p.title); holder.append(p.card); }
     out.append(group(t('Datos', 'Data'), linkRow('<span class="st-ic-data">⇅</span>', t('Copias y exportación', 'Backups & export'), '', () => openPage(t('Copias y exportación', 'Backups & export'), (pb) => {
