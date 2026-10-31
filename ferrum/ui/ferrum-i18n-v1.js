@@ -127,7 +127,10 @@
 
   const api = {
     lang, palette, t: tr,
-    setLang(next) { try { localStorage.setItem('ferrum-lang', next === 'en' ? 'en' : 'es'); } catch { /* noop */ } location.reload(); },
+    setLang(next) {
+      try { localStorage.setItem('ferrum-lang', next === 'en' ? 'en' : 'es'); } catch { /* noop */ }
+      langOut(() => location.reload());
+    },
     palettes: PALETTES,
     hue: () => Math.max(0, Math.min(360, Number(read('ferrum-hue')) || 255)),
     setPalette(next) {
@@ -145,6 +148,111 @@
   };
   window.__ferrumI18n = api;
 
+  // --- Animación al cambiar de idioma (v88) ----------------------------------
+  // Cambiar de idioma recarga la app. Antes de recargar, los textos visibles se
+  // «codifican»: sus letras pasan a signos al azar, de arriba abajo. Al volver
+  // a cargar salen codificados y se descifran letra a letra en el idioma nuevo.
+  // Solo cambia el texto de los nodos (nunca la estructura) y respeta «reducir
+  // movimiento».
+  const FX_KEY = 'ferrum-lang-fx';
+  const held = new WeakSet(); // nodos en animación: el traductor no los toca
+  const reduceMotion = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
+  const UP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', LO = 'abcdefghijklmnopqrstuvwxyz', DG = '0123456789', SY = '#%&*+=/<>$@';
+  const pick = (set) => set[(Math.random() * set.length) | 0];
+  const isGlyph = (c) => /[\p{L}\p{N}]/u.test(c);
+  const noiseOf = (c) => {
+    if (!isGlyph(c)) return c; // espacios y signos se quedan: se ven las palabras
+    if (Math.random() < 0.16) return pick(SY);
+    if (/\p{N}/u.test(c)) return pick(DG);
+    return c === c.toLowerCase() ? pick(LO) : pick(UP);
+  };
+  function visibleTexts(max = 180) {
+    const out = [];
+    const H = innerHeight, W = innerWidth, range = document.createRange();
+    const it = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = it.nextNode(); n && out.length < max; n = it.nextNode()) {
+      const p = n.parentElement;
+      if (!p || !/[\p{L}\p{N}]/u.test(n.data) || SKIP.has(p.tagName) || p.closest('svg, select, option, [data-lang-fx-skip]')) continue;
+      range.selectNodeContents(n);
+      const r = range.getBoundingClientRect();
+      if (!r.width || r.bottom < 0 || r.top > H || r.right < 0 || r.left > W) continue;
+      const cs = getComputedStyle(p);
+      if (cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
+      out.push({ node: n, y: r.top });
+    }
+    return out;
+  }
+  // mode 'out': texto → signos. mode 'in': signos → texto (el texto actual).
+  function scramble(items, mode, total, onEnd) {
+    const H = innerHeight || 1;
+    const jobs = items.map(({ node, y }) => {
+      const chars = [...node.data];
+      const wave = Math.max(0, Math.min(1, y / H)) * total * 0.32; // de arriba abajo
+      const span = total * (mode === 'out' ? 0.34 : 0.46);
+      const at = chars.map((c, i) => wave + (i / Math.max(1, chars.length)) * span + Math.random() * total * 0.14);
+      held.add(node);
+      return { node, chars, at, noise: chars.map(noiseOf), last: null, dead: false };
+    });
+    const t0 = performance.now();
+    let n = 0, ended = false;
+    const end = () => {
+      if (ended) return; ended = true;
+      if (mode === 'in') for (const j of jobs) if (!j.dead) { j.node.data = j.chars.join(''); held.delete(j.node); }
+      onEnd?.();
+    };
+    const frame = (now) => {
+      if (ended) return;
+      const t = (now || performance.now()) - t0;
+      const refresh = n++ % 3 === 0; // los signos cambian cada ~50 ms
+      for (const j of jobs) {
+        if (j.dead) continue;
+        if (j.last !== null && j.node.data !== j.last) { j.dead = true; held.delete(j.node); continue; } // la app lo cambió
+        if (refresh) j.noise = j.chars.map(noiseOf);
+        let s = '';
+        for (let i = 0; i < j.chars.length; i++) s += (mode === 'out' ? t >= j.at[i] : t < j.at[i]) ? j.noise[i] : j.chars[i];
+        if (s !== j.node.data) j.node.data = s;
+        j.last = j.node.data;
+      }
+      if (t < total) requestAnimationFrame(frame); else end();
+    };
+    frame(t0);
+    setTimeout(end, total + 600); // por si el navegador frena los fotogramas
+  }
+  function langOut(reload) {
+    try { sessionStorage.setItem(FX_KEY, String(Date.now())); } catch { /* noop */ }
+    let items = [];
+    try { if (!reduceMotion() && document.body && document.visibilityState === 'visible') items = visibleTexts(); } catch { items = []; }
+    if (!items.length) { reload(); return; }
+    scramble(items, 'out', 450, reload);
+  }
+  // Al volver a cargar: el texto espera transparente hasta que la vista está
+  // lista, sale en signos y se descifra.
+  (() => {
+    let at = 0;
+    try { at = Number(sessionStorage.getItem(FX_KEY)) || 0; sessionStorage.removeItem(FX_KEY); } catch { /* noop */ }
+    if (!at || Date.now() - at > 10000) return;
+    window.__ferrumLangSwitched = true; // recarga por idioma: no es «abrir la app»
+    if (reduceMotion()) return;
+    const st = document.createElement('style');
+    st.textContent = 'html.lx-pending body, html.lx-pending body * { color: transparent !important; -webkit-text-fill-color: transparent !important; }';
+    (document.head || root).appendChild(st);
+    root.classList.add('lx-pending');
+    const release = () => { root.classList.remove('lx-pending'); st.remove(); };
+    const ready = () => window.__ferrumBooted && document.querySelector('#view > *') && (!/^#\/more/.test(location.hash) || document.querySelector('.st-root'));
+    const t0 = Date.now();
+    const poll = () => {
+      if (document.getElementById('pin-gate')) { release(); return; }
+      if (!ready()) { if (Date.now() - t0 < 4000) setTimeout(poll, 40); else release(); return; }
+      requestAnimationFrame(() => {
+        let items = [];
+        try { items = visibleTexts(); } catch { items = []; }
+        try { scramble(items, 'in', 1100); } catch { /* el texto queda como está */ }
+        release(); // el primer fotograma ya está en signos
+      });
+    };
+    setTimeout(poll, 40);
+  })();
+
   // Los controles de idioma y estilo viven en ui/ferrum-settings-v1.js.
   function injectSettings() { /* ver ferrum-settings-v1.js */ }
 
@@ -156,6 +264,7 @@
   const DOW = { L: 'M', M: 'T', X: 'W', J: 'T', V: 'F', S: 'S', D: 'S' };
   const dowDone = new WeakSet();
   function doText(node) {
+    if (held.has(node)) return;
     const p = node.parentElement;
     if (skipEl(p)) return;
     const v = node.data;

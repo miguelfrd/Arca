@@ -239,6 +239,7 @@
   }
   const missing = {};
   whenBooted(() => {
+    if (window.__ferrumLangSwitched) return; // recarga por cambio de idioma
     if (linked() || document.querySelector('.modal-overlay')) {
       // La ventana de novedades ya lleva el botón; si hay otra ventana abierta, se espera a que cierre.
       if (!linked() && !promptedThisLoad) {
