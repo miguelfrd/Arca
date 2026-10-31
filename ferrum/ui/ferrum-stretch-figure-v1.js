@@ -67,7 +67,7 @@
     const floor = pose.noFloor ? '' : `<line x1="6" y1="91.5" x2="94" y2="91.5" stroke="${PROP}" stroke-width="1.2" stroke-linecap="round"/>`;
     const flip = pose.flip ? ' transform="translate(100 0) scale(-1 1)"' : '';
     return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">`
-      + `<rect width="100" height="100" rx="16" fill="${BG}"/>${floor}<g${flip}>${props(pose)}${body}</g></svg>`;
+      + `<rect width="100" height="100" fill="${BG}"/>${floor}<g${flip}>${props(pose)}${body}</g></svg>`;
   }
 
   window.__ferrumStretchFigure = { svg };

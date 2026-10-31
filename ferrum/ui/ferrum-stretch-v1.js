@@ -152,6 +152,20 @@
   }
   window.addEventListener('hashchange', () => { while (stack.length) stack[stack.length - 1](); });
 
+  // Iconos propios: los caracteres ⏮ ⏸ ⏭ ▶ salen como emoji en iOS.
+  const STROKE = 'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
+  const icon = (body, attrs = 'fill="currentColor"') => `<svg class="ic" viewBox="0 0 24 24" ${attrs} aria-hidden="true">${body}</svg>`;
+  const IC = {
+    prev: icon('<rect x="4.5" y="5.5" width="2.8" height="13" rx="1.4"/><path d="M19.5 7v10a1.2 1.2 0 0 1-1.9 1L10 13a1.2 1.2 0 0 1 0-2l7.6-5a1.2 1.2 0 0 1 1.9 1z"/>'),
+    next: icon('<rect x="16.7" y="5.5" width="2.8" height="13" rx="1.4"/><path d="M4.5 7v10a1.2 1.2 0 0 0 1.9 1L14 13a1.2 1.2 0 0 0 0-2L6.4 6a1.2 1.2 0 0 0-1.9 1z"/>'),
+    pause: icon('<rect x="6" y="4.5" width="4.4" height="15" rx="1.6"/><rect x="13.6" y="4.5" width="4.4" height="15" rx="1.6"/>'),
+    play: icon('<path d="M7.5 5.6v12.8a1.3 1.3 0 0 0 2 1.1l10-6.4a1.3 1.3 0 0 0 0-2.2l-10-6.4a1.3 1.3 0 0 0-2 1.1z"/>'),
+    x: icon('<path d="M6 6l12 12M18 6L6 18"/>', STROKE),
+    check: icon('<path d="m5 12.5 4.5 4.5L19 7.5"/>', STROKE),
+    heart: icon('<path d="M12 20.4s-7.9-4.7-9.5-9.4C1.4 7.6 3.5 4.6 6.7 4.6c2 0 3.8 1 5.3 3 1.5-2 3.3-3 5.3-3 3.2 0 5.3 3 4.2 6.4-1.6 4.7-9.5 9.4-9.5 9.4z"/>'),
+    spark: icon('<path d="M12 3c.6 4.9 3.4 8 9 9-5.6 1-8.4 4.1-9 9-.6-4.9-3.4-8-9-9 5.6-1 8.4-4.1 9-9z"/>'),
+  };
+
   const thumb = (s, size = 56) => `<span class="sx-thumb" style="width:${size}px;height:${size}px">${FIG()?.svg(s.pose, null) || ''}</span>`;
   const chips = (options, value, multi, onChange) => {
     const wrap = el('div', 'sx-chips');
@@ -179,7 +193,7 @@
     const { body } = sheet(t('Estiramientos', 'Stretching'));
     body.append(el('p', 'sx-lead', esc(t('Sesiones guiadas con temporizador y dibujos. Elige una rápida o crea la tuya según tu tiempo y lo que quieras estirar.',
       'Guided sessions with a timer and drawings. Pick a quick one or build your own around your time and what you want to stretch.'))));
-    const create = el('button', 'btn sx-create', `<span aria-hidden="true">✦</span> ${esc(t('Crear una sesión', 'Build a session'))}`);
+    const create = el('button', 'btn sx-create', `${IC.spark}${esc(t('Crear una sesión', 'Build a session'))}`);
     create.type = 'button';
     create.addEventListener('click', () => openAssistant(store));
     body.append(create);
@@ -278,7 +292,7 @@
       r.items.forEach((it, i) => {
         const s = byId(it.id); if (!s) return;
         const row = el('div', 'sx-row', `${thumb(s, 52)}<span class="sx-rtext"><span>${esc(loc(s).name)}</span><small>${it.hold} s${s.sides === 2 ? ` × 2 ${esc(t('lados', 'sides'))}` : ''} · ${esc(areaName(s.areas[0]))}</small></span>`);
-        const rm = el('button', 'sx-rm', '✕');
+        const rm = el('button', 'sx-rm', IC.x);
         rm.type = 'button';
         rm.setAttribute('aria-label', t('Quitar', 'Remove'));
         rm.addEventListener('click', () => { r.items.splice(i, 1); render(); });
@@ -296,7 +310,7 @@
     body.append(add);
     render();
     const actions = el('div', 'sx-actions');
-    const start = el('button', 'btn sx-cta', `▶ ${esc(t('Empezar', 'Start'))}`);
+    const start = el('button', 'btn sx-cta', `${IC.play}${esc(t('Empezar', 'Start'))}`);
     start.type = 'button';
     start.addEventListener('click', () => { if (r.items.length) play(store, r); });
     const save = el('button', 'btn secondary', esc(saved ? t('Guardar cambios', 'Save changes') : t('Guardar', 'Save')));
@@ -307,7 +321,7 @@
       if (saved) Object.assign(routine, { name: name.trim() || r.name, items: r.items });
       else store.routines.unshift({ name: name.trim() || r.name, items: r.items, createdAt: Date.now() });
       await saveStore(store);
-      save.textContent = t('Guardada ✓', 'Saved ✓');
+      save.textContent = t('Guardada', 'Saved');
       onChange?.();
     });
     actions.append(start, save);
@@ -406,9 +420,9 @@
     stage.append(fig, label, name, side, ring, cues, next);
     const ctrls = el('div', 'sx-ctrls');
     const mk = (txt, aria, cls = '') => { const b = el('button', `sx-cbtn ${cls}`, txt); b.type = 'button'; b.setAttribute('aria-label', aria); ctrls.append(b); return b; };
-    const prevB = mk('⏮', t('Anterior', 'Previous'));
-    const pauseB = mk('⏸', t('Pausa', 'Pause'), 'sx-main');
-    const nextB = mk('⏭', t('Siguiente', 'Next'));
+    const prevB = mk(IC.prev, t('Anterior', 'Previous'));
+    const pauseB = mk(IC.pause, t('Pausa', 'Pause'), 'sx-main');
+    const nextB = mk(IC.next, t('Siguiente', 'Next'));
     const remain = el('div', 'sx-remain');
     body.append(stage, ctrls, remain);
 
@@ -453,11 +467,11 @@
       store.history = store.history.slice(0, 200);
       saveStore(store);
       page.dataset.phase = 'done';
-      stage.innerHTML = `<div class="sx-done"><div class="sx-done-mark">✓</div><h1>${esc(t('¡Sesión completada!', 'Session complete!'))}</h1><p>${fmtMin(totalSec)} · ${n} ${esc(t('estiramientos', 'stretches'))}</p></div>`;
+      stage.innerHTML = `<div class="sx-done"><div class="sx-done-mark">${IC.check}</div><h1>${esc(t('¡Sesión completada!', 'Session complete!'))}</h1><p>${fmtMin(totalSec)} · ${n} ${esc(t('estiramientos', 'stretches'))}</p></div>`;
       ctrls.innerHTML = ''; remain.textContent = '';
       const acts = el('div', 'sx-actions');
       if (window.__ferrumHealth?.enabled('flex')) {
-        const h = el('button', 'btn secondary', `<span class="fx-heart">♥</span> ${esc(t('Guardar en Salud', 'Save to Health'))}`);
+        const h = el('button', 'btn secondary', `<span class="fx-heart">${IC.heart}</span> ${esc(t('Guardar en Salud', 'Save to Health'))}`);
         h.type = 'button';
         h.addEventListener('click', () => { window.__ferrumHealth.log({ kind: 'flex', minutes: totalSec / 60, start: Date.now() - totalSec * 1000, name: routine.name }); h.textContent = t('Enviado a Salud', 'Sent to Health'); });
         acts.append(h);
@@ -500,8 +514,8 @@
       if (nx < 0) finish(); else jumpTo(nx);
     });
     pauseB.addEventListener('click', () => {
-      if (pausedAt) { stepStart += performance.now() - pausedAt; pausedAt = 0; pauseB.textContent = '⏸'; page.classList.remove('paused'); }
-      else { pausedAt = performance.now(); pauseB.textContent = '▶'; page.classList.add('paused'); try { speechSynthesis.cancel(); } catch { /* noop */ } }
+      if (pausedAt) { stepStart += performance.now() - pausedAt; pausedAt = 0; pauseB.innerHTML = IC.pause; pauseB.setAttribute('aria-label', t('Pausa', 'Pause')); page.classList.remove('paused'); }
+      else { pausedAt = performance.now(); pauseB.innerHTML = IC.play; pauseB.setAttribute('aria-label', t('Seguir', 'Resume')); page.classList.add('paused'); try { speechSynthesis.cancel(); } catch { /* noop */ } }
     });
     page._beforeClose = (doClose) => {
       if (page.dataset.phase !== 'done' && !window.confirm(t('¿Terminar la sesión de estiramientos?', 'End the stretching session?'))) return;
@@ -532,7 +546,7 @@
     const title = modal?.querySelector('h3');
     if (!title || !/completada|complete/i.test(title.textContent)) return;
     ov.dataset.sxWired = '1';
-    const btn = el('button', 'btn secondary sx-finish-btn', `<span aria-hidden="true">✦</span> ${esc(t('Estirar ahora · 5 min', 'Stretch now · 5 min'))}`);
+    const btn = el('button', 'btn secondary sx-finish-btn', `${IC.spark}${esc(t('Estirar ahora · 5 min', 'Stretch now · 5 min'))}`);
     btn.type = 'button';
     btn.dataset.i18nSkip = '1';
     btn.addEventListener('click', async () => {

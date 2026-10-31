@@ -14,6 +14,13 @@
   const I = () => window.__ferrumI18n || {};
   const en = () => (I().lang || root.lang) === 'en';
   const t = (es, enText) => (en() ? enText : es);
+  // Iconos propios: ♥ y los pictogramas salen como emoji en iOS.
+  const STROKE = 'fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"';
+  const icon = (body, attrs = 'fill="currentColor"') => `<svg class="ic" viewBox="0 0 24 24" ${attrs} aria-hidden="true">${body}</svg>`;
+  const HEART = icon('<path d="M12 20.4s-7.9-4.7-9.5-9.4C1.4 7.6 3.5 4.6 6.7 4.6c2 0 3.8 1 5.3 3 1.5-2 3.3-3 5.3-3 3.2 0 5.3 3 4.2 6.4-1.6 4.7-9.5 9.4-9.5 9.4z"/>');
+  const CHECK = icon('<path d="m5 12.5 4.5 4.5L19 7.5"/>', STROKE);
+  const CALENDAR = icon('<rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10.5h16M8.5 3.5v4M15.5 3.5v4"/>', STROKE);
+  const SEARCH = icon('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>', STROKE);
   const read = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const write = (k, v) => { try { localStorage.setItem(k, v); } catch { /* noop */ } };
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -47,7 +54,7 @@
     const title = modal?.querySelector('h3');
     if (!title || !/completada|complete/i.test(title.textContent)) return;
     ov.dataset.healthWired = '1';
-    const btn = el('button', 'btn secondary fx-health-btn', `<span class="fx-heart" aria-hidden="true">♥</span> ${t('Guardar en Salud', 'Save to Health')}`);
+    const btn = el('button', 'btn secondary fx-health-btn', `<span class="fx-heart" aria-hidden="true">${HEART}</span> ${t('Guardar en Salud', 'Save to Health')}`);
     btn.type = 'button';
     btn.addEventListener('click', async () => {
       const h = Number(modal.querySelector('#fin-dur-h')?.value) || 0;
@@ -55,7 +62,7 @@
       let minutes = h * 60 + m;
       if (!minutes) { try { const w = (await (await db())?.workoutsDesc(1))?.[0]; minutes = w?.endTime ? (w.endTime - w.startTime) / 60000 : 1; } catch { minutes = 1; } }
       health.log({ kind: 'strength', minutes });
-      btn.innerHTML = `<span class="fx-heart" aria-hidden="true">♥</span> ${t('Enviado a Salud', 'Sent to Health')}`;
+      btn.innerHTML = `<span class="fx-heart" aria-hidden="true">${HEART}</span> ${t('Enviado a Salud', 'Sent to Health')}`;
     });
     const done = [...modal.querySelectorAll('button.btn')].pop();
     if (done?.parentElement) done.parentElement.insertBefore(btn, done); else modal.appendChild(btn);
@@ -187,7 +194,7 @@
     b.type = 'button';
     b.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(text); } catch { /* sin portapapeles */ }
-      b.innerHTML = `✓ ${t('Copiado', 'Copied')}`;
+      b.innerHTML = `${CHECK} ${t('Copiado', 'Copied')}`;
       setTimeout(() => { b.innerHTML = `<span aria-hidden="true">⧉</span> ${t('Copiar', 'Copy')} «${text}»`; }, 1600);
     });
     return b;
@@ -213,9 +220,9 @@
     const n = N();
     const S1 = SHORTCUT.strength, S2 = SHORTCUT.flex;
     const recv = `<div class="hw-act hw-recv"><span class="hw-aic" style="background:#0a84ff">⇣</span><div class="hw-abody">${t('Recibir', 'Receive')} ${tok(t('Apps y 18 más', 'Apps and 18 more'))} ${t('de', 'from')} ${tok(t('Ninguna parte', 'Nowhere'))}</div></div>`;
-    const adjustBlock = (hot) => action('📅', '#ff3b30', `<div class="hw-line hw-l0">${tok(n.sub, hot)} ${tok(n.input, hot)} ${tok(n.min, hot)} ${n.from} ${tok(n.now, hot)}</div>`, hot);
+    const adjustBlock = (hot) => action(CALENDAR, '#ff3b30', `<div class="hw-line hw-l0">${tok(n.sub, hot)} ${tok(n.input, hot)} ${tok(n.min, hot)} ${n.from} ${tok(n.now, hot)}</div>`, hot);
     const logHead = (type, hotType, hotArrow) => `<div class="hw-line hw-l0">${t('Registrar entreno de', 'Log')} ${tok(type, hotType)}${t('', ' workout')} <span class="hw-more${hotArrow ? ' hot' : ''}">›</span></div>`;
-    const logBlock = (type, { hotType = false, hotArrow = false, open = false, hotFields = false } = {}) => action('♥', '#ff2d55',
+    const logBlock = (type, { hotType = false, hotArrow = false, open = false, hotFields = false } = {}) => action(HEART, '#ff2d55',
       logHead(type, hotType, hotArrow) + (open ? `<div class="hw-fields"><div>${t('Fecha', 'Date')} ${tok(n.adj, hotFields)}</div><div>${n.dur} ${tok(n.input, hotFields)} ${tok(n.min, hotFields)}</div><div>${t('Calorías', 'Calories')} ${tok('1', hotFields)} ${tok('kcal', hotFields)}</div><div>${t('Distancia', 'Distance')} ${tok('1', hotFields)} ${tok('m', hotFields)}</div></div>` : ''),
       hotType || hotArrow || hotFields);
     return [
@@ -228,7 +235,7 @@
       {
         title: t('Ponle este nombre', 'Give it this name'),
         text: t(`Toca el nombre de arriba («Nuevo atajo») → <b>Cambiar nombre</b> y escribe <b>${S1}</b>. Ferrum lo busca por ese nombre, así que tiene que coincidir.`, `Tap the name at the top (“New Shortcut”) → <b>Rename</b> and type <b>${S1}</b>. Ferrum looks for it by that name, so it has to match.`),
-        mock: `<div class="hw-name hot">♥ ${S1} <span>⌄</span></div><div class="hw-search">🔍 ${n.search}</div>`,
+        mock: `<div class="hw-name hot">${HEART} ${S1} <span>⌄</span></div><div class="hw-search">${SEARCH} ${n.search}</div>`,
         extra: () => [copyBtn(S1)],
       },
       {
@@ -263,7 +270,7 @@
         text: t('Toca <b>Probar ahora</b>: Ferrum abre el atajo y guarda un entreno de 1 minuto (puedes borrarlo luego en Salud). La primera vez el iPhone pide permiso para escribir en Salud: toca <b>Permitir</b>. Después vuelve a Ferrum.',
           'Tap <b>Try now</b>: Ferrum opens the shortcut and saves a 1-minute workout (you can delete it later in Health). The first time, iPhone asks permission to write to Health: tap <b>Allow</b>. Then come back to Ferrum.'),
         mock: `<div class="hw-alert"><b>${t('«Atajos» quiere guardar datos en Salud', '“Shortcuts” would like to save data to Health')}</b><span class="hw-alert-btns"><span>${t('No permitir', 'Don\'t Allow')}</span><span class="hot">${t('Permitir', 'Allow')}</span></span></div>`,
-        extra: () => { const b = el('button', 'btn hw-try', `♥ ${t('Probar ahora', 'Try now')}`); b.type = 'button'; b.addEventListener('click', () => { write('ferrum-health-setup', '1'); health.log({ kind: 'strength', minutes: 1 }); }); return [b]; },
+        extra: () => { const b = el('button', 'btn hw-try', `${HEART} ${t('Probar ahora', 'Try now')}`); b.type = 'button'; b.addEventListener('click', () => { write('ferrum-health-setup', '1'); health.log({ kind: 'strength', minutes: 1 }); }); return [b]; },
       },
     ];
   }
@@ -309,7 +316,7 @@
     openPage(t('Salud de Apple', 'Apple Health'), (pb) => {
       const head = el('div', 'hw-hero');
       const status = () => (health.configured() ? t(`Conectado con el atajo «${SHORTCUT.strength}»`, `Connected through the “${SHORTCUT.strength}” shortcut`) : t('Sin conectar todavía', 'Not connected yet'));
-      head.innerHTML = `<span class="hw-heart">♥</span><div><b>${t('Tus entrenos, también en Salud', 'Your workouts, in Health too')}</b><small class="hw-status"></small></div>`;
+      head.innerHTML = `<span class="hw-heart">${HEART}</span><div><b>${t('Tus entrenos, también en Salud', 'Your workouts, in Health too')}</b><small class="hw-status"></small></div>`;
       pb.append(head);
       const paint = () => { head.querySelector('.hw-status').textContent = status(); head.classList.toggle('ok', health.configured()); onChange?.(); };
       paint();
@@ -335,7 +342,7 @@
       const help = el('details', 'hw-help');
       help.innerHTML = `<summary>${t('¿No funciona?', 'Not working?')}</summary><ul>
         <li>${t('«No funciona» o «Ha habido un problema»: abre el atajo, toca la flecha <b>›</b> de «Registrar entreno» y comprueba que no queda <b>ningún campo vacío</b>: Fecha = <b>Fecha ajustada</b>, Duración = <b>Entrada de atajo</b> (minutos), Calorías = <b>1</b> kcal y Distancia = <b>1</b> m.', '“Not working” or “There was a problem”: open the shortcut, tap the <b>›</b> arrow on “Log Workout” and check that <b>no field is empty</b>: Date = <b>Adjusted Date</b>, Duration = <b>Shortcut Input</b> (minutes), Calories = <b>1</b> kcal and Distance = <b>1</b> m.')}</li>
-        <li>${t('Pruébalo siempre desde Ferrum («Probar ahora»), no con el ▶ de Atajos: desde Atajos el atajo no recibe los minutos.', 'Always test it from Ferrum (“Try now”), not with the ▶ in Shortcuts: from there the shortcut gets no minutes.')}</li>
+        <li>${t('Pruébalo siempre desde Ferrum («Probar ahora»), no con el botón de reproducir de Atajos: desde Atajos el atajo no recibe los minutos.', 'Always test it from Ferrum (“Try now”), not with the play button in Shortcuts: from there the shortcut gets no minutes.')}</li>
         <li>${t(`«No se encuentra el atajo»: tiene que llamarse <b>${SHORTCUT.strength}</b> (y <b>${SHORTCUT.flex}</b> para estirar), sin espacios de más.`, `“Shortcut not found”: it must be named <b>${SHORTCUT.strength}</b> (and <b>${SHORTCUT.flex}</b> for stretching), no extra spaces.`)}</li>
         <li>${t('Si no te pidió permiso o lo denegaste: app Salud → tu foto (arriba) → <b>Apps</b> → <b>Atajos</b> → activa <b>Entrenamientos</b>.', 'If it never asked or you denied it: Health app → your picture (top) → <b>Apps</b> → <b>Shortcuts</b> → turn on <b>Workouts</b>.')}</li>
         <li>${t('Si el iPhone está en inglés, las acciones se llaman <b>Adjust Date</b> y <b>Log Workout</b>, y la variable <b>Shortcut Input</b>.', 'If your iPhone is in Spanish, the actions are <b>Ajustar fecha</b> and <b>Registrar entreno</b>, and the variable <b>Entrada de atajo</b>.')}</li></ul>`;
@@ -392,7 +399,7 @@
 
     // Salud
     const healthState = () => (health.enabled('strength') || health.enabled('flex') ? t('Activado', 'On') : t('No', 'Off'));
-    const healthRow = linkRow('<span class="st-ic-heart">♥</span>', t('Salud de Apple', 'Apple Health'), healthState(), () => openHealthPage(() => { healthRow.querySelector('.st-value').textContent = healthState(); }));
+    const healthRow = linkRow(`<span class="st-ic-heart">${HEART}</span>`, t('Salud de Apple', 'Apple Health'), healthState(), () => openHealthPage(() => { healthRow.querySelector('.st-value').textContent = healthState(); }));
     out.append(group(t('Salud', 'Health'), healthRow));
 
     // Privacidad (la tarjeta original, entera)
