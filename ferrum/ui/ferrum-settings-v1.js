@@ -215,7 +215,7 @@
     const adjustBlock = (hot) => action('📅', '#ff3b30', `<div class="hw-line hw-l0">${tok(n.sub, hot)} ${tok(n.input, hot)} ${tok(n.min, hot)} ${n.from} ${tok(n.now, hot)}</div>`, hot);
     const logHead = (type, hotType, hotArrow) => `<div class="hw-line hw-l0">${t('Registrar entreno de', 'Log')} ${tok(type, hotType)}${t('', ' workout')} <span class="hw-more${hotArrow ? ' hot' : ''}">›</span></div>`;
     const logBlock = (type, { hotType = false, hotArrow = false, open = false, hotFields = false } = {}) => action('♥', '#ff2d55',
-      logHead(type, hotType, hotArrow) + (open ? `<div class="hw-fields"><div>${n.dur} ${tok(n.input, hotFields)} ${tok(n.min, hotFields)}</div><div>${n.start} ${tok(n.adj, hotFields)}</div><div class="hw-dim">${t('Calorías', 'Calories')} · ${t('Distancia', 'Distance')}: ${t('déjalas vacías', 'leave empty')}</div></div>` : ''),
+      logHead(type, hotType, hotArrow) + (open ? `<div class="hw-fields"><div>${t('Fecha', 'Date')} ${tok(n.adj, hotFields)}</div><div>${n.dur} ${tok(n.input, hotFields)} ${tok(n.min, hotFields)}</div><div>${t('Calorías', 'Calories')} ${tok('1', hotFields)} ${tok('kcal', hotFields)}</div><div>${t('Distancia', 'Distance')} ${tok('1', hotFields)} ${tok('m', hotFields)}</div></div>` : ''),
       hotType || hotArrow || hotFields);
     return [
       {
@@ -245,11 +245,11 @@
         mock: adjustBlock(false) + logBlock(n.strength, { hotType: true }),
       },
       {
-        title: t('Muy importante: la duración', 'Very important: the duration'),
-        text: t(`La duración está escondida. Toca la flecha <b>›</b> del final de «${n.log}» para ver más campos y rellena estos dos:<br>• <b>${n.dur}</b>: elige <b>${n.input}</b> y la unidad <b>${n.min}</b>.<br>• <b>${n.start}</b>: elige <b>${n.adj}</b>.<br>Luego toca <b>OK</b> (o ✓) arriba para guardar.`,
-          `The duration is hidden. Tap the <b>›</b> arrow at the end of “${n.log}” to show more fields and fill in these two:<br>• <b>${n.dur}</b>: choose <b>${n.input}</b> and the unit <b>${n.min}</b>.<br>• <b>${n.start}</b>: choose <b>${n.adj}</b>.<br>Then tap <b>Done</b> (or ✓) at the top to save.`),
+        title: t('Muy importante: rellena los 4 campos', 'Very important: fill in all 4 fields'),
+        text: t(`Están escondidos. Toca la flecha <b>›</b> del final de «${n.log}» y rellénalos <b>todos</b>; si alguno se queda vacío, Atajos da error:<br>• <b>${t('Fecha', 'Date')}</b>: elige <b>${n.adj}</b>.<br>• <b>${n.dur}</b>: elige <b>${n.input}</b> y la unidad <b>${n.min}</b>.<br>• <b>${t('Calorías', 'Calories')}</b>: escribe <b>1</b> (kcal).<br>• <b>${t('Distancia', 'Distance')}</b>: escribe <b>1</b> y elige la unidad <b>m</b> (metros, no kilómetros).<br>Luego toca <b>OK</b> (o ✓) arriba para guardar.`,
+          `They are hidden. Tap the <b>›</b> arrow at the end of “${n.log}” and fill in <b>all</b> of them; if any is left empty, Shortcuts fails:<br>• <b>Date</b>: choose <b>${n.adj}</b>.<br>• <b>${n.dur}</b>: choose <b>${n.input}</b> and the unit <b>${n.min}</b>.<br>• <b>Calories</b>: type <b>1</b> (kcal).<br>• <b>Distance</b>: type <b>1</b> and pick the unit <b>m</b> (metres, not kilometres).<br>Then tap <b>Done</b> (or ✓) at the top to save.`),
         mock: logBlock(n.strength, { hotArrow: true, open: true, hotFields: true }),
-        tip: t('Si te sale «Ha habido un problema» al probar, casi siempre es porque falta la duración.', 'If you get “There was a problem” when trying it, it is almost always a missing duration.'),
+        tip: t('Calorías y Distancia parecen opcionales (salen en gris), pero si se quedan vacías el atajo falla. Con 1 kcal y 1 m tus datos de Salud prácticamente no cambian.', 'Calories and Distance look optional (they show in grey), but if left empty the shortcut fails. With 1 kcal and 1 m your Health data barely changes.'),
       },
       {
         title: t('Para los estiramientos (opcional)', 'For stretching (optional)'),
@@ -333,7 +333,8 @@
         row(t('Estiramientos', 'Stretching'), sw('flex'), t(`Al terminar una sesión (flexibilidad, atajo «${SHORTCUT.flex}»)`, `When a session ends (flexibility, “${SHORTCUT.flex}” shortcut)`))));
       const help = el('details', 'hw-help');
       help.innerHTML = `<summary>${t('¿No funciona?', 'Not working?')}</summary><ul>
-        <li>${t('«Ha habido un problema»: abre el atajo, toca la flecha <b>›</b> de «Registrar entreno» y comprueba que <b>Duración</b> tiene <b>Entrada de atajo</b> en minutos y <b>Fecha de inicio</b> tiene <b>Fecha ajustada</b>.', '“There was a problem”: open the shortcut, tap the <b>›</b> arrow on “Log Workout” and check that <b>Duration</b> uses <b>Shortcut Input</b> in minutes and <b>Start Date</b> uses <b>Adjusted Date</b>.')}</li>
+        <li>${t('«No funciona» o «Ha habido un problema»: abre el atajo, toca la flecha <b>›</b> de «Registrar entreno» y comprueba que no queda <b>ningún campo vacío</b>: Fecha = <b>Fecha ajustada</b>, Duración = <b>Entrada de atajo</b> (minutos), Calorías = <b>1</b> kcal y Distancia = <b>1</b> m.', '“Not working” or “There was a problem”: open the shortcut, tap the <b>›</b> arrow on “Log Workout” and check that <b>no field is empty</b>: Date = <b>Adjusted Date</b>, Duration = <b>Shortcut Input</b> (minutes), Calories = <b>1</b> kcal and Distance = <b>1</b> m.')}</li>
+        <li>${t('Pruébalo siempre desde Ferrum («Probar ahora»), no con el ▶ de Atajos: desde Atajos el atajo no recibe los minutos.', 'Always test it from Ferrum (“Try now”), not with the ▶ in Shortcuts: from there the shortcut gets no minutes.')}</li>
         <li>${t(`«No se encuentra el atajo»: tiene que llamarse <b>${SHORTCUT.strength}</b> (y <b>${SHORTCUT.flex}</b> para estirar), sin espacios de más.`, `“Shortcut not found”: it must be named <b>${SHORTCUT.strength}</b> (and <b>${SHORTCUT.flex}</b> for stretching), no extra spaces.`)}</li>
         <li>${t('Si no te pidió permiso o lo denegaste: app Salud → tu foto (arriba) → <b>Apps</b> → <b>Atajos</b> → activa <b>Entrenamientos</b>.', 'If it never asked or you denied it: Health app → your picture (top) → <b>Apps</b> → <b>Shortcuts</b> → turn on <b>Workouts</b>.')}</li>
         <li>${t('Si el iPhone está en inglés, las acciones se llaman <b>Adjust Date</b> y <b>Log Workout</b>, y la variable <b>Shortcut Input</b>.', 'If your iPhone is in Spanish, the actions are <b>Ajustar fecha</b> and <b>Registrar entreno</b>, and the variable <b>Entrada de atajo</b>.')}</li></ul>`;
