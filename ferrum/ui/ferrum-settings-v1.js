@@ -21,6 +21,7 @@
   const CHECK = icon('<path d="m5 12.5 4.5 4.5L19 7.5"/>', STROKE);
   const CALENDAR = icon('<rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10.5h16M8.5 3.5v4M15.5 3.5v4"/>', STROKE);
   const SEARCH = icon('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>', STROKE);
+  const TIMER = icon('<circle cx="12" cy="13.5" r="7"/><path d="M12 9.5v4.2l2.6 1.6M9.5 3.5h5M18.5 6.5l1.4-1.4"/>', STROKE);
   const read = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const write = (k, v) => { try { localStorage.setItem(k, v); } catch { /* noop */ } };
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -41,6 +42,9 @@
     },
   };
   window.__ferrumHealth = health;
+  // Piezas compartidas con ui/ferrum-timer-v1.js (se rellenan más abajo).
+  const kit = {};
+  window.__ferrumSettingsKit = kit;
 
   async function db() {
     const src = document.querySelector('script[type="module"][src*="assets/index-"]')?.src;
@@ -274,11 +278,11 @@
       },
     ];
   }
-  function openWizard(onDone) {
-    const list = steps();
+  // Guía paso a paso genérica (la usan Salud y el temporizador del iPhone).
+  function runWizard(list, { label, onFinish } = {}, onDone) {
     const page = el('div', 'hw-page');
     page.setAttribute('role', 'dialog');
-    page.setAttribute('aria-label', t('Conectar con Salud', 'Connect to Health'));
+    page.setAttribute('aria-label', label || '');
     page.innerHTML = `<div class="hw-bar"><button class="hw-x" type="button">${t('Cerrar', 'Close')}</button><div class="hw-dots"></div><span class="hw-n"></span></div><div class="hw-body"></div><div class="hw-nav"><button class="btn secondary hw-prev" type="button">${t('Atrás', 'Back')}</button><button class="btn hw-next" type="button"></button></div>`;
     document.body.appendChild(page);
     const body = page.querySelector('.hw-body'), dots = page.querySelector('.hw-dots');
@@ -303,7 +307,7 @@
     const close = (finished) => {
       page.classList.remove('in');
       setTimeout(() => page.remove(), 420);
-      if (finished) { write('ferrum-health-setup', '1'); if (!health.enabled('strength')) health.set('strength', true); }
+      if (finished) onFinish?.();
       onDone?.(finished);
     };
     page.querySelector('.hw-x').addEventListener('click', () => close(false));
@@ -311,6 +315,12 @@
     page.querySelector('.hw-next').addEventListener('click', () => { if (i < list.length - 1) { i++; render(1); } else close(true); });
     render();
     requestAnimationFrame(() => page.classList.add('in'));
+  }
+  function openWizard(onDone) {
+    runWizard(steps(), {
+      label: t('Conectar con Salud', 'Connect to Health'),
+      onFinish: () => { write('ferrum-health-setup', '1'); if (!health.enabled('strength')) health.set('strength', true); },
+    }, onDone);
   }
   function openHealthPage(onChange) {
     openPage(t('Salud de Apple', 'Apple Health'), (pb) => {
@@ -353,6 +363,8 @@
     });
   }
 
+  Object.assign(kit, { el, t, en, read, write, openPage, runWizard, group, row, linkRow, segmented, switchify, copyBtn, openShortcuts, tok, action, icon, STROKE, HEART, CHECK, SEARCH, CALENDAR, TIMER });
+
   // --- Reorganización -------------------------------------------------------
   function organize() {
     const body = document.getElementById('more-body');
@@ -391,7 +403,12 @@
     const restCtl = el('div', 'st-inline');
     if (rest) { rest.classList.add('st-num'); restCtl.append(rest, el('span', 'st-unit', 's')); }
     const train = [row(t('Descanso por defecto', 'Default rest'), restCtl)];
-    for (const id of ['s-sound', 's-lockcard', 's-rpe']) {
+    const tmr = window.__ferrumTimer;
+    if (tmr) {
+      const tRow = linkRow(`<span class="st-ic-timer">${TIMER}</span>`, t('Temporizador del iPhone', 'iPhone timer'), tmr.stateLabel(), () => tmr.openPage(() => { tRow.querySelector('.st-value').textContent = tmr.stateLabel(); }));
+      train.push(tRow);
+    }
+    for (const id of ['s-rpe']) {
       const r = rowOf($(id));
       if (r) { switchify($(id)); r.className = 'st-row st-legacy'; train.push(r); }
     }
