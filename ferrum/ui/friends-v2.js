@@ -3,7 +3,6 @@ import { initialize, snapshot, subscribe, synchronize, join, action, photoUrl, l
 import { openRecovery } from './account-recovery-v2.js';
 import { takePendingInvite, clearPendingInvite, validInvite } from './invite-v2.js';
 import { postCard, escapeHtml as esc, showPhoto } from './feed-v2.js';
-import { restAlertsState, enableRestAlerts, disableRestAlerts } from './push-v2.js';
 
 const peopleIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v2"/></svg>';
 let cleanup, activePanel = 'feed';
@@ -57,7 +56,7 @@ function createAccountDialog() {
 }
 function profileDialog() {
   const state = snapshot().state;
-  const dialog = popup('Tu perfil', `<form><label class="f" for="fui-profile-name">Tu nombre</label><input id="fui-profile-name" name="nickname" type="text" required minlength="2" maxlength="40" autocomplete="nickname"/><label class="fui-consent"><input type="checkbox" name="sharing"/><span>Compartir entrenamientos y fotos con mis amigos aceptados</span></label><p class="small muted">Al pausarlo, tu actividad deja de aparecer a tus amigos. Pausarlo no borra tus entrenamientos ni modifica tu copia privada.</p><p class="fui-form-error" role="alert"></p><button class="btn" type="submit">Guardar cambios</button></form><hr class="fui-dialog-separator"/><p class="small muted">Si tu cuenta ya no existe en el servidor o quieres empezar de cero en este móvil, reiníciala. Tus entrenos locales no se tocan.</p><button class="btn secondary" type="button" data-reset-account>Reiniciar cuenta</button><hr class="fui-dialog-separator"/><p class="small muted">Aviso de fin de descanso con el móvil bloqueado: si bloqueas el móvil en mitad de un descanso, el servidor de Amigos te manda una notificación cuando termina. Necesita la app instalada y el permiso de notificaciones.</p><button class="btn secondary" type="button" data-rest-alerts>Activar aviso de descanso</button><p class="small muted" data-rest-alerts-state role="status"></p>`);
+  const dialog = popup('Tu perfil', `<form><label class="f" for="fui-profile-name">Tu nombre</label><input id="fui-profile-name" name="nickname" type="text" required minlength="2" maxlength="40" autocomplete="nickname"/><label class="fui-consent"><input type="checkbox" name="sharing"/><span>Compartir entrenamientos y fotos con mis amigos aceptados</span></label><p class="small muted">Al pausarlo, tu actividad deja de aparecer a tus amigos. Pausarlo no borra tus entrenamientos ni modifica tu copia privada.</p><p class="fui-form-error" role="alert"></p><button class="btn" type="submit">Guardar cambios</button></form><hr class="fui-dialog-separator"/><p class="small muted">Si tu cuenta ya no existe en el servidor o quieres empezar de cero en este móvil, reiníciala. Tus entrenos locales no se tocan.</p><button class="btn secondary" type="button" data-reset-account>Reiniciar cuenta</button>`);
   const form = dialog.querySelector('form'); form.elements.nickname.value = state.profile.nickname;
   form.elements.sharing.checked = state.profile.sharing;
   form.addEventListener('submit', async event => {
@@ -71,26 +70,8 @@ function profileDialog() {
     if (await handleResetAccount()) dialog.close();
     else event.currentTarget.disabled = false;
   });
-  const alertsButton = dialog.querySelector('[data-rest-alerts]');
-  const alertsState = dialog.querySelector('[data-rest-alerts-state]');
-  async function paintAlerts() {
-    const st = await restAlertsState();
-    if (!alertsButton.isConnected) return;
-    if (!st.supported) { alertsButton.hidden = true; alertsState.textContent = 'Este dispositivo no admite avisos push en la webapp.'; return; }
-    if (st.permission === 'denied') { alertsButton.hidden = true; alertsState.textContent = 'Permiso rechazado: actívalo en Ajustes del iPhone para Ferrum.'; return; }
-    alertsButton.textContent = st.subscribed ? 'Desactivar aviso de descanso' : 'Activar aviso de descanso';
-    alertsState.textContent = st.subscribed ? 'Aviso activado en este móvil.' : '';
-  }
-  alertsButton.addEventListener('click', async () => {
-    alertsButton.disabled = true;
-    try {
-      const st = await restAlertsState();
-      if (st.subscribed) { await disableRestAlerts(); toast('Aviso de descanso desactivado'); }
-      else { await enableRestAlerts(); toast('Aviso de descanso activado'); }
-    } catch (error) { toast(error.message); }
-    finally { alertsButton.disabled = false; void paintAlerts(); }
-  });
-  void paintAlerts();
+  // El aviso push de fin de descanso se retiró en la v87: el descanso lo lleva
+  // el temporizador del iPhone (ui/ferrum-timer-v1.js).
 }
 async function handleResetAccount() {
   const ok = await confirmDlg('¿Reiniciar tu cuenta de Amigos?', 'Se borrará tu perfil de Amigos de este móvil: identidad, amistades y actividad compartida. Tus entrenos locales NO se tocan. Después podrás volver a entrar con una invitación.');
