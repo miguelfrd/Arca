@@ -6,3 +6,5 @@ Object.assign(window.__FERRUM_EN.extra = window.__FERRUM_EN.extra || {}, {"Entre
 Object.assign(window.__FERRUM_EN.extra = window.__FERRUM_EN.extra || {}, {"Descanso con el temporizador del iPhone": "Rest with the iPhone timer", "Suena con tu música y el móvil bloqueado": "Rings with your music and the phone locked", "Guía paso a paso para configurarlo": "Step-by-step guide to set it up", "Fuera el reproductor simulado del descanso": "The simulated rest player is gone", "Ocultar": "Hide"});
 // v88
 Object.assign(window.__FERRUM_EN.extra = window.__FERRUM_EN.extra || {}, {"Animación de descifrado al cambiar de idioma": "Decoding animation when you switch language"});
+// v89
+Object.assign(window.__FERRUM_EN.extra = window.__FERRUM_EN.extra || {}, {"Animación de idioma el doble de rápida": "Language animation, twice as fast"});
