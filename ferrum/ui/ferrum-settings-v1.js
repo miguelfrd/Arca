@@ -8,7 +8,7 @@
 //
 // Salud de Apple: una web no puede escribir en HealthKit; se hace con un
 // atajo de la app Atajos que recibe el entrenamiento como texto
-// (shortcuts://run-shortcut) y usa «Registrar entrenamiento».
+// (shortcuts://run-shortcut) y usa «Registrar entreno».
 (() => {
   const root = document.documentElement;
   const I = () => window.__ferrumI18n || {};
@@ -19,7 +19,8 @@
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 
   // --- Salud ------------------------------------------------------------------
-  const SHORTCUT = { strength: 'Ferrum Salud', flex: 'Ferrum Flex' };
+  // Con la mayúscula solo al principio: es lo que escribe el iPhone solo.
+  const SHORTCUT = { strength: 'Ferrum salud', flex: 'Ferrum flex' };
   const health = {
     enabled: (kind) => read(kind === 'flex' ? 'ferrum-health-flex' : 'ferrum-health') === '1',
     set: (kind, on) => write(kind === 'flex' ? 'ferrum-health-flex' : 'ferrum-health', on ? '1' : '0'),
@@ -199,16 +200,23 @@
   // Dibujos del editor de Atajos (simplificados) para cada paso.
   const tok = (txt, hot) => `<span class="hw-tok${hot ? ' hot' : ''}">${txt}</span>`;
   const action = (icon, color, body, hot) => `<div class="hw-act${hot ? ' hot' : ''}"><span class="hw-aic" style="background:${color}">${icon}</span><div class="hw-abody">${body}</div></div>`;
+  // Nombres tal como salen en Atajos (iOS 18/26) en cada idioma.
   const N = () => ({
-    sc: t('Atajos', 'Shortcuts'), input: t('Entrada del atajo', 'Shortcut Input'), now: t('Fecha actual', 'Current Date'),
-    adj: t('Fecha ajustada', 'Adjusted Date'), adjust: t('Ajustar fecha', 'Adjust Date'), log: t('Registrar entrenamiento', 'Log Workout'),
-    sub: t('Restar', 'Subtract'), min: t('minutos', 'minutes'), strength: t('Fuerza tradicional', 'Traditional Strength Training'),
+    sc: t('Atajos', 'Shortcuts'), input: t('Entrada de atajo', 'Shortcut Input'), now: t('Fecha actual', 'Current Date'),
+    adj: t('Fecha ajustada', 'Adjusted Date'), adjust: t('Ajustar fecha', 'Adjust Date'), log: t('Registrar entreno', 'Log Workout'),
+    sub: t('Restar', 'Subtract'), min: t('minutos', 'minutes'), from: t('desde', 'from'),
+    strength: t('Entreno de fuerza tradicional', 'Traditional Strength Training'), functional: t('Entreno funcional de fuerza', 'Functional Strength Training'),
     flex: t('Flexibilidad', 'Flexibility'), start: t('Fecha de inicio', 'Start Date'), dur: t('Duración', 'Duration'), search: t('Buscar acciones', 'Search for actions'),
   });
   function steps() {
     const n = N();
-    const adjustBlock = (hot) => action('📅', '#ff9f0a', `<b>${n.adjust}</b><div class="hw-line">${tok(n.sub, hot)} ${tok(n.input, hot)} ${tok(n.min, hot)}</div><div class="hw-line">${t('de', 'from')} ${tok(n.now, hot)}</div>`, hot);
-    const logBlock = (type, hot) => action('♥', '#ff2d55', `<b>${n.log}</b><div class="hw-line">${t('Tipo', 'Type')} ${tok(type, hot)}</div><div class="hw-line">${n.start} ${tok(n.adj, hot)}</div><div class="hw-line">${n.dur} ${tok(n.input, hot)} ${tok('min', hot)}</div>`, hot);
+    const S1 = SHORTCUT.strength, S2 = SHORTCUT.flex;
+    const recv = `<div class="hw-act hw-recv"><span class="hw-aic" style="background:#0a84ff">⇣</span><div class="hw-abody">${t('Recibir', 'Receive')} ${tok(t('Apps y 18 más', 'Apps and 18 more'))} ${t('de', 'from')} ${tok(t('Ninguna parte', 'Nowhere'))}</div></div>`;
+    const adjustBlock = (hot) => action('📅', '#ff3b30', `<div class="hw-line hw-l0">${tok(n.sub, hot)} ${tok(n.input, hot)} ${tok(n.min, hot)} ${n.from} ${tok(n.now, hot)}</div>`, hot);
+    const logHead = (type, hotType, hotArrow) => `<div class="hw-line hw-l0">${t('Registrar entreno de', 'Log')} ${tok(type, hotType)}${t('', ' workout')} <span class="hw-more${hotArrow ? ' hot' : ''}">›</span></div>`;
+    const logBlock = (type, { hotType = false, hotArrow = false, open = false, hotFields = false } = {}) => action('♥', '#ff2d55',
+      logHead(type, hotType, hotArrow) + (open ? `<div class="hw-fields"><div>${n.dur} ${tok(n.input, hotFields)} ${tok(n.min, hotFields)}</div><div>${n.start} ${tok(n.adj, hotFields)}</div><div class="hw-dim">${t('Calorías', 'Calories')} · ${t('Distancia', 'Distance')}: ${t('déjalas vacías', 'leave empty')}</div></div>` : ''),
+      hotType || hotArrow || hotFields);
     return [
       {
         title: t('Abre Atajos y crea uno nuevo', 'Open Shortcuts and make a new one'),
@@ -218,32 +226,40 @@
       },
       {
         title: t('Ponle este nombre', 'Give it this name'),
-        text: t('Toca el nombre de arriba («Nuevo atajo»), elige <b>Cambiar nombre</b> y escribe exactamente <b>Ferrum Salud</b>. Ferrum lo busca por ese nombre.', 'Tap the name at the top (“New Shortcut”), choose <b>Rename</b> and type exactly <b>Ferrum Salud</b>. Ferrum looks for it by that name.'),
-        mock: `<div class="hw-name hot">Ferrum Salud <span>▾</span></div><div class="hw-search">🔍 ${n.search}</div>`,
-        extra: () => [copyBtn('Ferrum Salud')],
+        text: t(`Toca el nombre de arriba («Nuevo atajo») → <b>Cambiar nombre</b> y escribe <b>${S1}</b>. Ferrum lo busca por ese nombre, así que tiene que coincidir.`, `Tap the name at the top (“New Shortcut”) → <b>Rename</b> and type <b>${S1}</b>. Ferrum looks for it by that name, so it has to match.`),
+        mock: `<div class="hw-name hot">♥ ${S1} <span>⌄</span></div><div class="hw-search">🔍 ${n.search}</div>`,
+        extra: () => [copyBtn(S1)],
       },
       {
         title: t('1.ª acción: la hora de inicio', '1st action: the start time'),
-        text: t(`Toca <b>${n.search}</b>, escribe <b>fecha</b> y elige <b>${n.adjust}</b>. Déjala como en el dibujo: toca el primer hueco y elige <b>${n.sub}</b>; en el número elige la variable <b>${n.input}</b>; unidad <b>${n.min}</b>; y en la fecha, <b>${n.now}</b>.`,
-          `Tap <b>${n.search}</b>, type <b>date</b> and choose <b>${n.adjust}</b>. Make it look like the drawing: tap the first blank and pick <b>${n.sub}</b>; for the number pick the variable <b>${n.input}</b>; unit <b>${n.min}</b>; and for the date, <b>${n.now}</b>.`),
-        mock: adjustBlock(true),
-        tip: t('Las variables (en azul) salen al tocar un hueco: aparece una fila de sugerencias sobre el teclado o el botón «Seleccionar variable».', 'Variables (in blue) appear when you tap a blank: a row of suggestions above the keyboard or the “Select Variable” button.'),
+        text: t(`Toca <b>${n.search}</b>, escribe <b>ajustar fecha</b> y elige <b>${n.adjust}</b>. Toca cada palabra azul para dejarla así: <b>${n.sub}</b> · <b>${n.input}</b> · <b>${n.min}</b> ${n.from} <b>${n.now}</b>.`,
+          `Tap <b>${n.search}</b>, type <b>adjust date</b> and choose <b>${n.adjust}</b>. Tap each blue word to make it: <b>${n.sub}</b> · <b>${n.input}</b> · <b>${n.min}</b> ${n.from} <b>${n.now}</b>.`),
+        mock: recv + adjustBlock(true),
+        tip: t(`«${n.input}» sale al tocar el número: elige «Seleccionar variable» o la fila de sugerencias sobre el teclado. El bloque «Recibir… de Ninguna parte» aparece solo arriba: es normal, déjalo como está.`,
+          `“${n.input}” shows up when you tap the number: choose “Select Variable” or the suggestions above the keyboard. The “Receive… from Nowhere” block appears on top by itself: that's normal, leave it.`),
       },
       {
-        title: t('2.ª acción: el entrenamiento', '2nd action: the workout'),
-        text: t(`Busca <b>entrenamiento</b> y elige <b>${n.log}</b>. Tipo: <b>${n.strength}</b>. ${n.start}: <b>${n.adj}</b> (la de la acción anterior). ${n.dur}: <b>${n.input}</b>, en minutos. Toca <b>OK</b> y ya está.`,
-          `Search for <b>workout</b> and choose <b>${n.log}</b>. Type: <b>${n.strength}</b>. ${n.start}: <b>${n.adj}</b> (from the previous action). ${n.dur}: <b>${n.input}</b>, in minutes. Tap <b>Done</b> and that's it.`),
-        mock: adjustBlock(false) + logBlock(n.strength, true),
+        title: t('2.ª acción: el entreno', '2nd action: the workout'),
+        text: t(`Busca <b>entreno</b> y elige <b>${n.log}</b>. Toca el tipo (en azul) y elige <b>${n.strength}</b> (si no lo ves, <b>${n.functional}</b> también vale).`,
+          `Search for <b>workout</b> and choose <b>${n.log}</b>. Tap the type (in blue) and choose <b>${n.strength}</b> (<b>${n.functional}</b> works too).`),
+        mock: adjustBlock(false) + logBlock(n.strength, { hotType: true }),
+      },
+      {
+        title: t('Muy importante: la duración', 'Very important: the duration'),
+        text: t(`La duración está escondida. Toca la flecha <b>›</b> del final de «${n.log}» para ver más campos y rellena estos dos:<br>• <b>${n.dur}</b>: elige <b>${n.input}</b> y la unidad <b>${n.min}</b>.<br>• <b>${n.start}</b>: elige <b>${n.adj}</b>.<br>Luego toca <b>OK</b> (o ✓) arriba para guardar.`,
+          `The duration is hidden. Tap the <b>›</b> arrow at the end of “${n.log}” to show more fields and fill in these two:<br>• <b>${n.dur}</b>: choose <b>${n.input}</b> and the unit <b>${n.min}</b>.<br>• <b>${n.start}</b>: choose <b>${n.adj}</b>.<br>Then tap <b>Done</b> (or ✓) at the top to save.`),
+        mock: logBlock(n.strength, { hotArrow: true, open: true, hotFields: true }),
+        tip: t('Si te sale «Ha habido un problema» al probar, casi siempre es porque falta la duración.', 'If you get “There was a problem” when trying it, it is almost always a missing duration.'),
       },
       {
         title: t('Para los estiramientos (opcional)', 'For stretching (optional)'),
-        text: t(`En la lista de atajos, mantén pulsado <b>Ferrum Salud</b> → <b>Duplicar</b>. Llama a la copia <b>Ferrum Flex</b> y cambia el tipo a <b>${n.flex}</b>.`, `In your shortcuts list, long-press <b>Ferrum Salud</b> → <b>Duplicate</b>. Name the copy <b>Ferrum Flex</b> and change the type to <b>${n.flex}</b>.`),
-        mock: `<div class="hw-menu"><div class="hw-tile">Ferrum Salud</div><div class="hw-pop"><span>${t('Cambiar nombre', 'Rename')}</span><span class="hot">${t('Duplicar', 'Duplicate')}</span><span>${t('Eliminar', 'Delete')}</span></div></div>` + logBlock(n.flex, true),
-        extra: () => [copyBtn('Ferrum Flex')],
+        text: t(`En la lista de atajos, mantén pulsado <b>${S1}</b> → <b>Duplicar</b>. Llama a la copia <b>${S2}</b> y cambia el tipo a <b>${n.flex}</b>. Lo demás se queda igual.`, `In your shortcuts list, long-press <b>${S1}</b> → <b>Duplicate</b>. Name the copy <b>${S2}</b> and change the type to <b>${n.flex}</b>. Everything else stays the same.`),
+        mock: `<div class="hw-menu"><div class="hw-tile">${S1}</div><div class="hw-pop"><span>${t('Cambiar nombre', 'Rename')}</span><span class="hot">${t('Duplicar', 'Duplicate')}</span><span>${t('Eliminar', 'Delete')}</span></div></div>` + logBlock(n.flex, { hotType: true }),
+        extra: () => [copyBtn(S2)],
       },
       {
         title: t('Pruébalo', 'Try it'),
-        text: t('Toca <b>Probar ahora</b>: Ferrum abrirá el atajo y guardará un entrenamiento de 1 minuto (puedes borrarlo luego en Salud). La primera vez el iPhone pedirá permiso para escribir en Salud: toca <b>Permitir</b>. Después vuelve a Ferrum.',
+        text: t('Toca <b>Probar ahora</b>: Ferrum abre el atajo y guarda un entreno de 1 minuto (puedes borrarlo luego en Salud). La primera vez el iPhone pide permiso para escribir en Salud: toca <b>Permitir</b>. Después vuelve a Ferrum.',
           'Tap <b>Try now</b>: Ferrum opens the shortcut and saves a 1-minute workout (you can delete it later in Health). The first time, iPhone asks permission to write to Health: tap <b>Allow</b>. Then come back to Ferrum.'),
         mock: `<div class="hw-alert"><b>${t('«Atajos» quiere guardar datos en Salud', '“Shortcuts” would like to save data to Health')}</b><span class="hw-alert-btns"><span>${t('No permitir', 'Don\'t Allow')}</span><span class="hot">${t('Permitir', 'Allow')}</span></span></div>`,
         extra: () => { const b = el('button', 'btn hw-try', `♥ ${t('Probar ahora', 'Try now')}`); b.type = 'button'; b.addEventListener('click', () => { write('ferrum-health-setup', '1'); health.log({ kind: 'strength', minutes: 1 }); }); return [b]; },
@@ -291,7 +307,7 @@
   function openHealthPage(onChange) {
     openPage(t('Salud de Apple', 'Apple Health'), (pb) => {
       const head = el('div', 'hw-hero');
-      const status = () => (health.configured() ? t('Conectado con el atajo «Ferrum Salud»', 'Connected through the “Ferrum Salud” shortcut') : t('Sin conectar todavía', 'Not connected yet'));
+      const status = () => (health.configured() ? t(`Conectado con el atajo «${SHORTCUT.strength}»`, `Connected through the “${SHORTCUT.strength}” shortcut`) : t('Sin conectar todavía', 'Not connected yet'));
       head.innerHTML = `<span class="hw-heart">♥</span><div><b>${t('Tus entrenos, también en Salud', 'Your workouts, in Health too')}</b><small class="hw-status"></small></div>`;
       pb.append(head);
       const paint = () => { head.querySelector('.hw-status').textContent = status(); head.classList.toggle('ok', health.configured()); onChange?.(); };
@@ -314,13 +330,13 @@
       const swS = sw('strength');
       pb.append(group(t('Qué se guarda', 'What gets saved'),
         row(t('Entrenamientos', 'Workouts'), swS, t('Botón «Guardar en Salud» al terminar (fuerza tradicional)', '“Save to Health” button when you finish (strength training)')),
-        row(t('Estiramientos', 'Stretching'), sw('flex'), t('Al terminar una sesión (flexibilidad, atajo «Ferrum Flex»)', 'When a session ends (flexibility, “Ferrum Flex” shortcut)'))));
+        row(t('Estiramientos', 'Stretching'), sw('flex'), t(`Al terminar una sesión (flexibilidad, atajo «${SHORTCUT.flex}»)`, `When a session ends (flexibility, “${SHORTCUT.flex}” shortcut)`))));
       const help = el('details', 'hw-help');
       help.innerHTML = `<summary>${t('¿No funciona?', 'Not working?')}</summary><ul>
-        <li>${t('El atajo tiene que llamarse exactamente <b>Ferrum Salud</b> (y <b>Ferrum Flex</b> para estirar), con mayúsculas y sin espacios de más.', 'The shortcut must be named exactly <b>Ferrum Salud</b> (and <b>Ferrum Flex</b> for stretching), same capitals, no extra spaces.')}</li>
+        <li>${t('«Ha habido un problema»: abre el atajo, toca la flecha <b>›</b> de «Registrar entreno» y comprueba que <b>Duración</b> tiene <b>Entrada de atajo</b> en minutos y <b>Fecha de inicio</b> tiene <b>Fecha ajustada</b>.', '“There was a problem”: open the shortcut, tap the <b>›</b> arrow on “Log Workout” and check that <b>Duration</b> uses <b>Shortcut Input</b> in minutes and <b>Start Date</b> uses <b>Adjusted Date</b>.')}</li>
+        <li>${t(`«No se encuentra el atajo»: tiene que llamarse <b>${SHORTCUT.strength}</b> (y <b>${SHORTCUT.flex}</b> para estirar), sin espacios de más.`, `“Shortcut not found”: it must be named <b>${SHORTCUT.strength}</b> (and <b>${SHORTCUT.flex}</b> for stretching), no extra spaces.`)}</li>
         <li>${t('Si no te pidió permiso o lo denegaste: app Salud → tu foto (arriba) → <b>Apps</b> → <b>Atajos</b> → activa <b>Entrenamientos</b>.', 'If it never asked or you denied it: Health app → your picture (top) → <b>Apps</b> → <b>Shortcuts</b> → turn on <b>Workouts</b>.')}</li>
-        <li>${t('Si el iPhone está en inglés, las acciones se llaman <b>Adjust Date</b> y <b>Log Workout</b>, y la variable <b>Shortcut Input</b>.', 'If your iPhone is in Spanish, the actions are <b>Ajustar fecha</b> and <b>Registrar entrenamiento</b>, and the variable <b>Entrada del atajo</b>.')}</li>
-        <li>${t('Si el entreno sale con 0 minutos, revisa que en «Duración» esté la variable <b>Entrada del atajo</b> y la unidad en minutos.', 'If the workout shows 0 minutes, check that “Duration” uses the <b>Shortcut Input</b> variable and the unit is minutes.')}</li></ul>`;
+        <li>${t('Si el iPhone está en inglés, las acciones se llaman <b>Adjust Date</b> y <b>Log Workout</b>, y la variable <b>Shortcut Input</b>.', 'If your iPhone is in Spanish, the actions are <b>Ajustar fecha</b> and <b>Registrar entreno</b>, and the variable <b>Entrada de atajo</b>.')}</li></ul>`;
       pb.append(help);
       pb.append(el('p', 'st-foot', t(
         'Ferrum no lee nada de Salud: solo le pasa al atajo cuántos minutos ha durado, cuando tú lo pides.',
