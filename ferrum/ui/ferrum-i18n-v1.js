@@ -203,7 +203,7 @@
     const frame = (now) => {
       if (ended) return;
       const t = (now || performance.now()) - t0;
-      const refresh = n++ % 3 === 0; // los signos cambian cada ~50 ms
+      const refresh = n++ % 2 === 0; // los signos cambian cada ~33 ms
       for (const j of jobs) {
         if (j.dead) continue;
         if (j.last !== null && j.node.data !== j.last) { j.dead = true; held.delete(j.node); continue; } // la app lo cambió
@@ -223,7 +223,7 @@
     let items = [];
     try { if (!reduceMotion() && document.body && document.visibilityState === 'visible') items = visibleTexts(); } catch { items = []; }
     if (!items.length) { reload(); return; }
-    scramble(items, 'out', 450, reload);
+    scramble(items, 'out', 225, reload);
   }
   // Al volver a cargar: el texto espera transparente hasta que la vista está
   // lista, sale en signos y se descifra.
@@ -246,7 +246,7 @@
       requestAnimationFrame(() => {
         let items = [];
         try { items = visibleTexts(); } catch { items = []; }
-        try { scramble(items, 'in', 1100); } catch { /* el texto queda como está */ }
+        try { scramble(items, 'in', 550); } catch { /* el texto queda como está */ }
         release(); // el primer fotograma ya está en signos
       });
     };

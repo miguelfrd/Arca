@@ -3,7 +3,7 @@
 // ui/), caché primero para el resto. La app se cachea en la primera visita
 // y luego funciona sin conexión.
 
-const CACHE = 'ferrum-v88';
+const CACHE = 'ferrum-v89';
 
 self.addEventListener('install', (event) => {
   // 'reload' evita que la precarga coja una copia rancia del borde del CDN
