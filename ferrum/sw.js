@@ -3,7 +3,7 @@
 // ui/), caché primero para el resto. La app se cachea en la primera visita
 // y luego funciona sin conexión.
 
-const CACHE = 'ferrum-v89';
+const CACHE = 'ferrum-v90';
 
 self.addEventListener('install', (event) => {
   // 'reload' evita que la precarga coja una copia rancia del borde del CDN
@@ -87,19 +87,34 @@ const PUSH_EN = { '¡Descanso terminado!': 'Rest finished!', 'Descanso terminado
 async function pushLang() {
   try { const r = await (await caches.open('prefs-ferrum')).match('./__lang'); return r ? (await r.text()).trim() : 'es'; } catch { return 'es'; }
 }
+// El texto lo prepara la app al marcar la serie («Siguiente: ejercicio · peso ×
+// reps») y lo deja en Cache Storage: el servidor solo sabe la hora.
+async function restText() {
+  try {
+    const cache = await caches.open('prefs-ferrum');
+    const r = await cache.match('./__rest');
+    if (!r) return null;
+    const t = await r.json();
+    return t && Math.abs(Date.now() - t.endsAt) < 10 * 60e3 ? t : null;
+  } catch { return null; }
+}
 self.addEventListener('push', (event) => {
   let data = { title: 'Ferrum', body: '¡Descanso terminado!', tag: 'rest-timer', url: './#/train' };
   try { if (event.data) data = { ...data, ...event.data.json() }; } catch { /* payload no JSON */ }
-  event.waitUntil(pushLang().then((lang) => {
-    if (lang === 'en') { data.title = PUSH_EN[data.title] || data.title; data.body = PUSH_EN[data.body] || data.body; }
-    return self.registration.showNotification(data.title, {
-    body: data.body,
-    tag: data.tag,
-    icon: './icons/icon-192.png',
-    badge: './icons/icon-192.png',
-    data: { url: data.url },
-  });
-  }));
+  event.waitUntil((async () => {
+    const [lang, local] = await Promise.all([pushLang(), restText()]);
+    if (local) { data.title = local.title || data.title; data.body = local.body || data.body; data.url = local.url || data.url; }
+    else if (lang === 'en') { data.title = PUSH_EN[data.title] || data.title; data.body = PUSH_EN[data.body] || data.body; }
+    // Los avisos anteriores se quitan: en iPhone «tag» no sustituye el aviso.
+    try { for (const n of await self.registration.getNotifications()) if (n.data?.kind === 'rest' || n.tag === 'rest-timer') n.close(); } catch { /* noop */ }
+    await self.registration.showNotification(data.title, {
+      body: data.body,
+      tag: data.tag,
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      data: { url: data.url, kind: 'rest' },
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', (event) => {

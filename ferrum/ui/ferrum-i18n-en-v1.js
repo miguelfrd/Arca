@@ -8,3 +8,5 @@ Object.assign(window.__FERRUM_EN.extra = window.__FERRUM_EN.extra || {}, {"Desca
 Object.assign(window.__FERRUM_EN.extra = window.__FERRUM_EN.extra || {}, {"Animación de descifrado al cambiar de idioma": "Decoding animation when you switch language"});
 // v89
 Object.assign(window.__FERRUM_EN.extra = window.__FERRUM_EN.extra || {}, {"Animación de idioma el doble de rápida": "Language animation, twice as fast"});
+// v90
+Object.assign(window.__FERRUM_EN.extra = window.__FERRUM_EN.extra || {}, {"Aviso al terminar el descanso, con notificación": "An alert when your rest ends, by notification", "Te dice el siguiente ejercicio, peso y repeticiones": "It tells you the next exercise, weight and reps", "Suena con el móvil bloqueado y sin parar la música": "It sounds with the phone locked, without stopping your music", "El temporizador del iPhone pasa a ser opcional": "The iPhone timer is now optional", "Saltar descanso": "Skip rest"});

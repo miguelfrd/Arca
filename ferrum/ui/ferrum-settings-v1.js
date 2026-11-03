@@ -22,6 +22,7 @@
   const CALENDAR = icon('<rect x="4" y="5.5" width="16" height="14.5" rx="3"/><path d="M4 10.5h16M8.5 3.5v4M15.5 3.5v4"/>', STROKE);
   const SEARCH = icon('<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/>', STROKE);
   const TIMER = icon('<circle cx="12" cy="13.5" r="7"/><path d="M12 9.5v4.2l2.6 1.6M9.5 3.5h5M18.5 6.5l1.4-1.4"/>', STROKE);
+  const BELL = icon('<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.6 2.1H4.4z"/><path d="M10 20.6a2.2 2.2 0 0 0 4 0"/>', STROKE);
   const read = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
   const write = (k, v) => { try { localStorage.setItem(k, v); } catch { /* noop */ } };
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -363,7 +364,7 @@
     });
   }
 
-  Object.assign(kit, { el, t, en, read, write, openPage, runWizard, group, row, linkRow, segmented, switchify, copyBtn, openShortcuts, tok, action, icon, STROKE, HEART, CHECK, SEARCH, CALENDAR, TIMER });
+  Object.assign(kit, { el, t, en, read, write, openPage, runWizard, group, row, linkRow, segmented, switchify, copyBtn, openShortcuts, tok, action, icon, STROKE, HEART, CHECK, SEARCH, CALENDAR, TIMER, BELL });
 
   // --- Reorganización -------------------------------------------------------
   function organize() {
@@ -405,7 +406,7 @@
     const train = [row(t('Descanso por defecto', 'Default rest'), restCtl)];
     const tmr = window.__ferrumTimer;
     if (tmr) {
-      const tRow = linkRow(`<span class="st-ic-timer">${TIMER}</span>`, t('Temporizador del iPhone', 'iPhone timer'), tmr.stateLabel(), () => tmr.openPage(() => { tRow.querySelector('.st-value').textContent = tmr.stateLabel(); }));
+      const tRow = linkRow(`<span class="st-ic-timer">${BELL}</span>`, t('Aviso de descanso', 'Rest alert'), tmr.stateLabel(), () => tmr.openPage(() => { tRow.querySelector('.st-value').textContent = tmr.stateLabel(); }));
       train.push(tRow);
     }
     for (const id of ['s-rpe']) {

@@ -1,10 +1,12 @@
-// Avisos de fin de descanso con el móvil bloqueado (Web Push).
+// Avisos de fin de descanso (Web Push).
 //
-// El temporizador vive en el bundle (train.ts): al pasar la app a segundo
-// plano con un descanso en curso emite «ferrum:rest-schedule» y al volver
-// «ferrum:rest-cancel». Este módulo los traduce a la API de Amigos: el
-// servidor guarda la cita (Durable Object con alarma) y envía la
-// notificación a la hora exacta, aunque la app esté cerrada.
+// Desde la v90, ui/ferrum-timer-v1.js llama a window.__ferrumPush al marcar
+// una serie: remind(endsAt, token) pide al servidor de Amigos el aviso
+// (Durable Object con alarma), que llega a la hora exacta aunque la app esté
+// cerrada o el móvil bloqueado; cancel(token) lo anula. El servidor solo
+// recibe la hora y un identificador: el texto del aviso lo guarda la app en
+// Cache Storage y lo pone el service worker (sw.js) al llegar el push.
+// Siguen funcionando los eventos «ferrum:rest-schedule» y «ferrum:rest-cancel».
 // Requiere cuenta de Amigos: la suscripción push va ligada al usuario.
 import { api, snapshot } from './social-v2.js';
 
@@ -82,6 +84,26 @@ export async function disableRestAlerts() {
   }
   try { localStorage.removeItem(STORE_KEY); } catch { /* noop */ }
 }
+
+export function remindRest(endsAt, token) {
+  if (!snapshot().identity?.registered) return Promise.reject(new Error('Primero entra en tu cuenta de Amigos.'));
+  return api('/rest/remind', { method: 'POST', body: { endsAt, token }, timeout: 8000 });
+}
+export function cancelRest(token) {
+  if (!snapshot().identity?.registered) return Promise.resolve(null);
+  return api('/rest/cancel', { method: 'POST', body: { token }, timeout: 8000 });
+}
+
+window.__ferrumPush = {
+  supported: pushSupported,
+  state: restAlertsState,
+  enable: enableRestAlerts,
+  disable: disableRestAlerts,
+  ensure: ensureRestAlerts,
+  registered: () => !!snapshot().identity?.registered,
+  remind: remindRest,
+  cancel: cancelRest,
+};
 
 function wire() {
   if (wired) return;

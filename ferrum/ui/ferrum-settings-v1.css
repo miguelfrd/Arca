@@ -257,3 +257,12 @@ html[data-fui-skin="command"] .tm-toast.show { opacity: 1; transform: translate(
 html[data-fui-skin="command"] .tm-mode-row { flex-wrap: wrap; row-gap: 10px; }
 html[data-fui-skin="command"] .tm-mode-row .tm-seg { flex: 1 1 100%; display: grid; grid-template-columns: 1fr 1fr; }
 html[data-fui-skin="command"] .tm-mode-row .tm-seg .st-seg-btn { min-height: 36px; }
+
+/* v90 · aviso de descanso por notificación */
+html[data-fui-skin="command"] .tm-err { margin: 0; min-height: 0; color: #ff453a; font-size: 13.5px; line-height: 1.4; }
+html[data-fui-skin="command"] .tm-err:empty { display: none; }
+html[data-fui-skin="command"] .tm-alt { justify-self: center; margin-top: 2px; padding: 8px 10px; border: 0; background: transparent; color: var(--c-coral); font: 500 14px var(--font-body); cursor: pointer; }
+html[data-fui-skin="command"] .tm-badge.ok { background: linear-gradient(160deg, #4cd964, #30b04a); box-shadow: 0 6px 18px rgba(48, 176, 74, .3); }
+html[data-fui-skin="command"] .tm-tryhint { margin-top: 2px; text-align: center; }
+html[data-fui-skin="command"] .tm-method { display: grid; gap: 6px; margin-top: 10px; }
+html[data-fui-skin="command"] .hw-start .ic, html[data-fui-skin="command"] .tm-go .ic, html[data-fui-skin="command"] .tm-test .ic { margin-right: 6px; }
